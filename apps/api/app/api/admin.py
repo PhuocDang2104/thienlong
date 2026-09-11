@@ -56,7 +56,7 @@ async def admin_stream(request: Request, user: AdminUser = Depends(admin_require
 
 @router.get('/guests/template.csv')
 def template(user: AdminUser = Depends(admin_required)):
-    return attachment(csv_bytes([['name', 'company', 'email', 'phone', 'notes'], ['Nguyễn Văn An', 'Công ty Minh An', 'an@example.com', '0901234567', 'Khách VIP']]), 'guest-template.csv', 'text/csv; charset=utf-8')
+    return attachment(csv_bytes([['name', 'company', 'email', 'phone', 'notes'], ['Nguyễn Văn An', 'Công ty Minh An', 'an@example.com', '0901234567', '']]), 'guest-template.csv', 'text/csv; charset=utf-8')
 
 
 @router.get('/guests/qr.zip')

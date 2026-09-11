@@ -19,15 +19,22 @@ def test_demo_csv_replaces_guests_and_is_idempotent(system, admin_headers, tmp_p
         assert db.scalar(select(func.count()).select_from(Outbox)) == 1
         original_tokens = {guest.email: guest.invite_token for guest in guests}
 
+    with system.factory() as db:
+        first = db.scalar(select(Guest).where(Guest.email == 'diep.gia.luat@example.com'))
+        first.notes = 'Khách cần hỗ trợ di chuyển'
+        db.commit()
+
     changed = tmp_path / 'demo-guests.csv'
-    changed.write_text(DEFAULT_DEMO_FILE.read_text(encoding='utf-8').replace('Demo luồng QR và RSVP', 'Ghi chú đã cập nhật', 1), encoding='utf-8')
+    changed.write_text(DEFAULT_DEMO_FILE.read_text(encoding='utf-8').replace('0901234501,', '0909999999,Ghi chú từ CSV', 1), encoding='utf-8')
     with system.factory() as db:
         created, updated = sync_guest_file(db, changed)
         db.commit()
         guests = db.scalars(select(Guest).order_by(Guest.id)).all()
         assert (created, updated) == (0, 1)
         assert {guest.email: guest.invite_token for guest in guests} == original_tokens
-        assert sum(guest.notes == 'Ghi chú đã cập nhật' for guest in guests) == 1
+        first = next(guest for guest in guests if guest.email == 'diep.gia.luat@example.com')
+        assert first.phone == '0909999999'
+        assert first.notes == 'Khách cần hỗ trợ di chuyển'
 
     qr = system.client.get(f'/api/v1/admin/guests/{guests[0].id}/qr.png', headers=admin_headers)
     assert qr.status_code == 200 and qr.content.startswith(b'\x89PNG')

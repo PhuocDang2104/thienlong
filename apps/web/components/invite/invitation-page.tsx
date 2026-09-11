@@ -73,6 +73,7 @@ function RsvpForm({ invitation, token, onSaved }: { invitation: Invitation; toke
   const schema = z.object({
     status: z.enum(["accepted", "declined"], { message: "Vui lòng chọn phản hồi của Quý khách." }),
     companions: z.number().int().min(0).max(invitation.max_companions),
+    notes: z.string().trim().max(1000, "Lời nhắn tối đa 1.000 ký tự."),
   });
   type Values = z.infer<typeof schema>;
   const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
@@ -80,6 +81,7 @@ function RsvpForm({ invitation, token, onSaved }: { invitation: Invitation; toke
     defaultValues: {
       status: invitation.rsvp_status === "pending" ? undefined : invitation.rsvp_status,
       companions: invitation.companions,
+      notes: invitation.notes,
     },
   });
   const [saved, setSaved] = useState(invitation.rsvp_status !== "pending");
@@ -90,10 +92,11 @@ function RsvpForm({ invitation, token, onSaved }: { invitation: Invitation; toke
     setError("");
     try {
       const response = await api<Invitation>(`/public/invitations/${encodeURIComponent(token)}/rsvp`, {
-        method: "PUT", body: { status: values.status, companions: values.status === "declined" ? 0 : values.companions },
+        method: "PUT", body: { status: values.status, companions: values.status === "declined" ? 0 : values.companions, notes: values.notes },
       });
       onSaved(response);
       setValue("companions", response.companions);
+      setValue("notes", response.notes);
       setSaved(true);
     } catch (err) {
       setError(err instanceof ApiError && err.status === 409
@@ -113,6 +116,7 @@ function RsvpForm({ invitation, token, onSaved }: { invitation: Invitation; toke
           <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"><Check className="size-5" /></div>
           <h3 className="text-lg font-semibold">Đã ghi nhận phản hồi</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">{invitation.rsvp_status === "accepted" ? `Quý khách đã xác nhận tham dự${invitation.companions ? ` cùng ${invitation.companions} người đi cùng` : ""}. Hẹn gặp Quý khách tại sự kiện.` : "Cảm ơn Quý khách đã phản hồi. Rất mong được đón tiếp Quý khách trong dịp tiếp theo."}</p>
+          {invitation.notes && <p className="mt-4 border-l-2 border-blue-200 pl-3 text-sm leading-6 text-slate-600"><span className="font-semibold text-slate-800">Lời nhắn:</span> {invitation.notes}</p>}
           <button onClick={() => setSaved(false)} className="mt-6 min-h-11 text-sm font-semibold text-[#163c74] underline-offset-4 hover:underline">Thay đổi phản hồi</button>
         </div>
       ) : (
@@ -137,6 +141,11 @@ function RsvpForm({ invitation, token, onSaved }: { invitation: Invitation; toke
                 </div>
               </div>
             )}
+            <div className="mt-6">
+              <label htmlFor="rsvp-notes" className="mb-2 block text-sm font-medium">Lời nhắn cho Ban tổ chức <span className="font-normal text-slate-500">(không bắt buộc)</span></label>
+              <textarea id="rsvp-notes" rows={3} maxLength={1000} {...register("notes")} aria-invalid={!!errors.notes} className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-blue-100" placeholder="Ví dụ: yêu cầu hỗ trợ di chuyển, chế độ ăn…" />
+              {errors.notes && <p className="mt-1 text-sm text-red-700" role="alert">{errors.notes.message}</p>}
+            </div>
             {error && <p className="mt-5 rounded-lg bg-red-50 p-3 text-sm leading-6 text-red-800" role="alert">{error}</p>}
             <button type="submit" className={`${button} mt-7 w-full`} disabled={isSubmitting}>
               {isSubmitting ? <><LoaderCircle className="size-4 animate-spin" />Đang lưu phản hồi…</> : <>Xác nhận phản hồi<ArrowRight className="size-4" /></>}

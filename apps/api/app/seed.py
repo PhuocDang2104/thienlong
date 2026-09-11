@@ -58,9 +58,9 @@ def sync_guest_file(db, source: Path, replace: bool = False) -> tuple[int, int]:
     for row in preview.rows:
         email = str(row.email).lower()
         guest = existing.get(email)
-        values = {'name': row.name, 'company': row.company, 'email': email, 'phone': row.phone, 'notes': row.notes}
+        values = {'name': row.name, 'company': row.company, 'email': email, 'phone': row.phone}
         if guest is None:
-            guest = Guest(event_id=1, **values)
+            guest = Guest(event_id=1, notes=row.notes, **values)
             db.add(guest)
             existing[email] = guest
             created += 1

@@ -45,13 +45,12 @@ def main():
             create_dialog.get_by_label('Họ và tên').fill(manual_name)
             create_dialog.get_by_label('Đơn vị / Công ty').fill('Khách phát sinh')
             create_dialog.get_by_label('Email', exact=True).fill(f'manual-{batch}@example.com')
-            create_dialog.get_by_label('Ghi chú', exact=True).fill('Khách bổ sung trực tiếp')
             create_dialog.get_by_role('button', name='Thêm khách mời', exact=True).click()
             expect(create_dialog).not_to_be_visible()
             expect(page.get_by_text('Đã thêm khách và tạo link/QR riêng.', exact=True)).to_be_visible()
             created = client.get(API + '/admin/guests', headers=auth, params={'search': manual_name}).json()['items'][0]
             assert len(created['invite_token']) == 43 and created['invitation_url'].endswith('/i/' + created['invite_token'])
-            assert created['notes'] == 'Khách bổ sung trực tiếp'
+            assert created['notes'] == ''
             page.get_by_label('Tìm khách mời', exact=True).fill(name)
             table = page.get_by_role('table')
             expect(table.get_by_role('row')).to_have_count(2)
@@ -61,11 +60,9 @@ def main():
             dialog.get_by_label('Đơn vị / Công ty').fill('Đơn vị đã cập nhật')
             dialog.get_by_label('Phản hồi tham dự').select_option('accepted')
             dialog.get_by_label('Người đi cùng', exact=True).fill('1')
-            dialog.get_by_label('Ghi chú', exact=True).fill('Ưu tiên đón tại sảnh A')
             dialog.get_by_role('button', name='Lưu thay đổi').click()
             expect(dialog).not_to_be_visible()
             expect(table.get_by_text('Đơn vị đã cập nhật', exact=True)).to_be_visible()
-            expect(table.get_by_text('Ưu tiên đón tại sảnh A', exact=True).last).to_be_visible()
             page.get_by_label('Lọc phản hồi').select_option('declined')
             expect(page.get_by_text('Không có khách mời phù hợp', exact=True)).to_be_visible()
             page.get_by_label('Lọc phản hồi').select_option('accepted')

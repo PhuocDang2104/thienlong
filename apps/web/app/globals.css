@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f6fb;
-  --foreground: #102550;
+  --background: #f6f7f9;
+  --foreground: #17233b;
   --primary: #244aa5;
   --brand-blue: #244aa5;
   --brand-blue-deep: #0d2d6c;
   --brand-red: #ef1e2f;
-  --muted: #64738f;
-  --border: #dce4f1;
-  --radius: 0.75rem;
-  --shadow-card: 0 1px 2px rgba(16, 37, 80, .04), 0 10px 30px rgba(25, 55, 112, .08);
-  --shadow-elevated: 0 20px 60px rgba(13, 45, 108, .16), 0 4px 14px rgba(13, 45, 108, .08);
+  --muted: #647087;
+  --border: #dfe3e9;
+  --radius: 0.5rem;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, .035);
+  --shadow-elevated: 0 8px 24px rgba(15, 23, 42, .1);
 }
 @theme inline {
   --color-background: var(--background);
@@ -37,23 +37,20 @@ input, select { font-size: 16px; }
 
 .brand-page {
   background-color: var(--background);
-  background-image:
-    radial-gradient(circle at 6% -8%, rgba(36, 74, 165, .11), transparent 25rem),
-    radial-gradient(circle at 96% 6%, rgba(239, 30, 47, .045), transparent 18rem);
 }
 .card-shell {
-  border: 1px solid rgba(197, 210, 232, .82);
-  background: rgba(255, 255, 255, .98);
+  border: 1px solid var(--border);
+  background: #fff;
   box-shadow: var(--shadow-card);
 }
-.card-interactive { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
-.card-interactive:hover { transform: translateY(-3px); border-color: rgba(36, 74, 165, .34); box-shadow: var(--shadow-elevated); }
-.page-enter { animation: page-enter 360ms cubic-bezier(.22, 1, .36, 1) both; }
+.card-interactive { transition: border-color 140ms ease, background-color 140ms ease; }
+.card-interactive:hover { border-color: #b9c5d8; background-color: #fbfcfe; }
+.page-enter { animation: page-enter 180ms ease-out both; }
 .welcome-enter { animation: welcome-enter 520ms cubic-bezier(.22, 1, .36, 1) both; }
 .scan-line { animation: scan-line 2.2s ease-in-out infinite; box-shadow: 0 0 16px rgba(239, 30, 47, .9); }
 .live-dot { animation: live-dot 2s ease-out infinite; }
 
-@keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @keyframes welcome-enter { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes scan-line { 0%, 100% { transform: translateY(-76px); opacity: .6; } 50% { transform: translateY(76px); opacity: 1; } }
 @keyframes live-dot { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, .45); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }

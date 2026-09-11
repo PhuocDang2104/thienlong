@@ -16,7 +16,6 @@ const schema = z.object({
   company: z.string().trim().max(250),
   email: z.union([z.email("Email không hợp lệ."), z.literal("")]),
   phone: z.string().trim().max(40),
-  notes: z.string().trim().max(1000, "Ghi chú tối đa 1.000 ký tự."),
   rsvp_status: z.enum(["pending", "accepted", "declined"]),
   companions: z.number().int().min(0),
 });
@@ -29,7 +28,7 @@ export function GuestForm({ guest, onSaved, onCancel }: { guest?: Guest; onSaved
   const locked = Boolean(guest?.checked_in_at);
   const { register, handleSubmit, setValue, control, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: guest?.name || "", company: guest?.company || "", email: guest?.email || "", phone: guest?.phone || "", notes: guest?.notes || "", rsvp_status: guest?.rsvp_status || "pending", companions: guest?.companions || 0 },
+    defaultValues: { name: guest?.name || "", company: guest?.company || "", email: guest?.email || "", phone: guest?.phone || "", rsvp_status: guest?.rsvp_status || "pending", companions: guest?.companions || 0 },
   });
   const status = useWatch({ control, name: "rsvp_status" });
   const save = async (values: Values) => {
@@ -38,10 +37,10 @@ export function GuestForm({ guest, onSaved, onCancel }: { guest?: Guest; onSaved
       setError(`Mỗi khách được đăng ký tối đa ${event.max_companions} người đi cùng.`);
       return;
     }
-    const { name, company, email, phone, notes } = values;
+    const { name, company, email, phone } = values;
     try {
       const saved = await api<Guest>(guest ? `/admin/guests/${guest.id}` : "/admin/guests", { method: guest ? "PATCH" : "POST", token, body: {
-        name, company, email, phone, notes,
+        name, company, email, phone,
         ...(!locked ? { rsvp_status: values.rsvp_status, companions: values.rsvp_status === "accepted" ? values.companions : 0 } : {}),
       } });
       onSaved(saved);
@@ -57,11 +56,7 @@ export function GuestForm({ guest, onSaved, onCancel }: { guest?: Guest; onSaved
       <Input id={`guest-${field}`} type={type} {...register(field)} aria-invalid={!!errors[field]} />
       {errors[field] && <p className="mt-1 text-xs text-red-700">{errors[field]?.message}</p>}
     </div>)}
-    <div>
-      <label className="mb-1.5 block text-xs font-medium" htmlFor="guest-notes">Ghi chú</label>
-      <textarea id="guest-notes" rows={3} maxLength={1000} {...register("notes")} aria-invalid={!!errors.notes} className="w-full resize-y rounded-xl border border-border bg-white px-3.5 py-3 text-sm text-foreground shadow-sm outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-blue-100" placeholder="Ví dụ: khách VIP, cần hỗ trợ đón tiếp…" />
-      {errors.notes && <p className="mt-1 text-xs text-red-700">{errors.notes.message}</p>}
-    </div>
+    {guest && <div className="rounded-lg border border-border bg-slate-50 px-3.5 py-3"><p className="text-xs font-semibold text-slate-700">Ghi chú khách gửi</p><p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-muted">{guest.notes || "Khách chưa để lại ghi chú."}</p></div>}
     {locked ? <div className="rounded-lg bg-slate-50 p-3 text-xs leading-6 text-muted">
       <input type="hidden" {...register("rsvp_status")} />
       <input type="hidden" {...register("companions", { valueAsNumber: true })} />

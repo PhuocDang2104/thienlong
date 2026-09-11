@@ -26,7 +26,8 @@ def test_public_invitation_minimal_data_and_unknown_token(system):
     assert response.status_code == 200
     assert response.json()['guest_name'] == 'Nguyễn Văn An'
     assert response.json()['max_companions'] == 3
-    assert not {'email', 'phone', 'notes', 'id', 'invite_token'} & response.json().keys()
+    assert response.json()['notes'] == ''
+    assert not {'email', 'phone', 'id', 'invite_token'} & response.json().keys()
     assert response.headers['cache-control'] == 'no-store'
     assert system.client.get('/api/v1/public/invitations/unknown').status_code == 404
     event = system.client.get('/api/v1/public/event').json()
@@ -36,16 +37,19 @@ def test_public_invitation_minimal_data_and_unknown_token(system):
 
 def test_rsvp_persists_with_outbox_and_validation(system):
     path = f'/api/v1/public/invitations/{system.guests[3]["token"]}/rsvp'
-    response = system.client.put(path, json={'status': 'accepted', 'companions': 3})
+    response = system.client.put(path, json={'status': 'accepted', 'companions': 3, 'notes': 'Cần ghế gần lối đi'})
     assert response.status_code == 200
     assert response.json()['rsvp_status'] == 'accepted'
+    assert response.json()['notes'] == 'Cần ghế gần lối đi'
     with system.factory() as db:
-        assert db.get(Guest, system.guests[3]['id']).companions == 3
+        guest = db.get(Guest, system.guests[3]['id'])
+        assert guest.companions == 3 and guest.notes == 'Cần ghế gần lối đi'
         outbox = db.scalar(select(Outbox))
         assert outbox.event_type == 'rsvp' and outbox.payload == {}
         assert outbox.published_at is None
     for body in [{'status': 'accepted', 'companions': 4}, {'status': 'declined', 'companions': 1}, {'status': 'pending', 'companions': 0}, {'status': 'accepted', 'companions': True}, {'status': 'accepted', 'companions': 1, 'admin': True}]:
         assert system.client.put(path, json=body).status_code == 422
+    assert system.client.put(path, json={'status': 'accepted', 'companions': 0, 'notes': 'x' * 1001}).status_code == 422
     assert system.client.put(path, json={'status': 'declined', 'companions': 0}).status_code == 200
 
 
@@ -120,10 +124,10 @@ def test_admin_pagination_filters_sort_and_edit(system, admin_headers, pg_header
     assert system.client.get('/api/v1/admin/guests?page_size=101', headers=admin_headers).status_code == 422
     guest_id = system.guests[1]['id']
     path = f'/api/v1/admin/guests/{guest_id}'
-    updated = system.client.patch(path, headers=admin_headers, json={'name': 'Trần Bình mới', 'company': 'Doanh nghiệp mới', 'email': 'BINH.NEW@example.com', 'companions': 1, 'notes': 'Khách VIP, đón tại sảnh A'})
+    updated = system.client.patch(path, headers=admin_headers, json={'name': 'Trần Bình mới', 'company': 'Doanh nghiệp mới', 'email': 'BINH.NEW@example.com', 'companions': 1})
     assert updated.status_code == 200
     assert updated.json()['email'] == 'binh.new@example.com'
-    assert updated.json()['notes'] == 'Khách VIP, đón tại sảnh A'
+    assert updated.json()['notes'] == ''
     assert system.client.get(path, headers=admin_headers).json()['companions'] == 1
     assert system.client.patch(path, headers=admin_headers, json={'email': 'an@example.com'}).status_code == 409
     assert system.client.patch(path, headers=admin_headers, json={'name': None}).status_code == 422
@@ -132,12 +136,12 @@ def test_admin_pagination_filters_sort_and_edit(system, admin_headers, pg_header
 
 
 def test_admin_creates_guest_with_automatic_private_token(system, admin_headers):
-    body = {'name': 'Khách bổ sung', 'company': 'Thiên Long', 'email': 'NEW.GUEST@example.com', 'phone': '0901234567', 'notes': 'Ưu tiên hàng ghế đầu'}
+    body = {'name': 'Khách bổ sung', 'company': 'Thiên Long', 'email': 'NEW.GUEST@example.com', 'phone': '0901234567'}
     response = system.client.post('/api/v1/admin/guests', headers=admin_headers, json=body)
     assert response.status_code == 201
     guest = response.json()
     assert guest['email'] == 'new.guest@example.com'
-    assert guest['notes'] == body['notes']
+    assert guest['notes'] == ''
     assert len(guest['invite_token']) == 43
     assert guest['invitation_url'].endswith('/i/' + guest['invite_token'])
     public = system.client.get('/api/v1/public/invitations/' + guest['invite_token'])
@@ -150,6 +154,7 @@ def test_admin_creates_guest_with_automatic_private_token(system, admin_headers)
         assert db.scalar(select(func.count()).select_from(Outbox)) == 1
     assert system.client.post('/api/v1/admin/guests', headers=admin_headers, json=body).status_code == 409
     assert system.client.post('/api/v1/admin/guests', headers=admin_headers, json={**body, 'email': '', 'invite_token': 'chosen-by-client'}).status_code == 422
+    assert system.client.post('/api/v1/admin/guests', headers=admin_headers, json={**body, 'email': '', 'notes': 'Ghi từ Admin'}).status_code == 422
     assert system.client.post('/api/v1/admin/guests', headers=admin_headers, json={**body, 'email': '', 'rsvp_status': 'pending', 'companions': 1}).status_code == 422
 
 

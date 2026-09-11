@@ -16,6 +16,7 @@ export interface Invitation {
   venue: string;
   rsvp_status: RsvpStatus;
   companions: number;
+  notes: string;
   max_companions: number;
 }
 

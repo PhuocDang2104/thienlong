@@ -46,7 +46,7 @@ def serialize_pg_guest(guest: Guest) -> dict:
 
 
 def serialize_invitation(guest: Guest, event: Event) -> dict:
-    return {'guest_name': guest.name, 'company': guest.company, 'event_name': event.name, 'start_at': event.start_at, 'venue': event.venue, 'rsvp_status': guest.rsvp_status, 'companions': guest.companions, 'max_companions': event.max_companions}
+    return {'guest_name': guest.name, 'company': guest.company, 'event_name': event.name, 'start_at': event.start_at, 'venue': event.venue, 'rsvp_status': guest.rsvp_status, 'companions': guest.companions, 'notes': guest.notes, 'max_companions': event.max_companions}
 
 
 def require_welcome(db: Session, token: str) -> Event:

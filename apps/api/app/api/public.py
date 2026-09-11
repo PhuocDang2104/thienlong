@@ -37,6 +37,8 @@ def rsvp(token: str, body: RsvpRequest, request: Request, db: Session = Depends(
     if body.status == 'declined' and body.companions != 0:
         raise HTTPException(422, 'Số người đi cùng phải bằng 0 khi không tham dự.')
     guest.rsvp_status, guest.companions = body.status, body.companions
+    if body.notes is not None:
+        guest.notes = body.notes
     add_outbox(db, 'rsvp')
     db.commit()
     return serialize_invitation(guest, event)

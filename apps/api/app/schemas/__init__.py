@@ -29,12 +29,14 @@ class InvitationResponse(BaseModel):
     venue: str
     rsvp_status: Literal['pending', 'accepted', 'declined']
     companions: int
+    notes: str
     max_companions: int
 
 
 class RsvpRequest(StrictModel):
     status: Literal['accepted', 'declined']
     companions: int = Field(ge=0, le=100, strict=True)
+    notes: str | None = Field(default=None, max_length=1000)
 
 
 class LoginRequest(StrictModel):
@@ -115,7 +117,6 @@ class GuestCreate(StrictModel):
     company: str = Field(default='', max_length=250)
     email: EmailStr | None = None
     phone: str = Field(default='', max_length=40)
-    notes: str = Field(default='', max_length=1000)
     rsvp_status: Literal['pending', 'accepted', 'declined'] = 'pending'
     companions: int = Field(default=0, ge=0, le=100, strict=True)
 
@@ -130,7 +131,6 @@ class GuestPatch(StrictModel):
     company: str | None = Field(default=None, max_length=250)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=40)
-    notes: str | None = Field(default=None, max_length=1000)
     rsvp_status: Literal['pending', 'accepted', 'declined'] | None = None
     companions: int | None = Field(default=None, ge=0, le=100, strict=True)
 

@@ -62,6 +62,7 @@ def main():
         expect(invitation.get_by_role("heading", name=names[0], exact=True)).to_be_visible()
         invitation.get_by_label("Có, tôi tham dự", exact=True).check()
         invitation.get_by_role("button", name="Tăng số người đi cùng").click()
+        invitation.get_by_label("Lời nhắn cho Ban tổ chức").fill("Cần hỗ trợ chỗ ngồi gần lối đi")
         invitation.screenshot(path=str(ARTIFACTS / "invitation-mobile.png"), full_page=True)
         invitation.get_by_role("button", name="Xác nhận phản hồi").click()
         expect(invitation.get_by_role("heading", name="Đã ghi nhận phản hồi")).to_be_visible()
@@ -115,6 +116,7 @@ def main():
         # Exercise desktop table search and mobile drawer/layout on the same real session.
         admin.get_by_role("navigation", name="Điều hướng quản trị").get_by_role("link", name="Khách mời", exact=True).click()
         expect(admin.get_by_role("table")).to_be_visible(timeout=15000)
+        expect(admin.get_by_text("Cần hỗ trợ chỗ ngồi gần lối đi", exact=True).last).to_be_visible(timeout=15000)
         admin.screenshot(path=str(ARTIFACTS / "guests-desktop.png"), full_page=True)
         admin.set_viewport_size({"width": 390, "height": 844})
         admin.get_by_role("button", name="Mở menu", exact=True).click()

@@ -105,7 +105,7 @@ uvicorn
 
 Vì vậy lần deploy đầu sẽ tạo schema, sự kiện, Admin và đúng ba khách **Diệp Gia Luật, Ánh Hiếu, Đặng Như Phước** từ [`demo-guests.csv`](../apps/api/data/demo-guests.csv). Với mỗi email mới, backend tạo một token mật mã 256 bit rồi lưu ngay trên bản ghi khách. QR không phải file cố định trong database; endpoint QR và ZIP dựng PNG từ `PUBLIC_FRONTEND_URL + /i/{token}`, nên dùng được ngay sau khi seed.
 
-Các lần restart/deploy sau **upsert theo email**: tên, công ty, điện thoại và ghi chú thay đổi theo CSV; token, RSVP và check-in hiện có được giữ nguyên. Khách được tạo thêm trên Admin cũng không bị xóa. Cơ chế này giúp việc restart an toàn và không làm hỏng QR đã phát.
+Các lần restart/deploy sau **upsert theo email**: tên, công ty và điện thoại thay đổi theo CSV; token, RSVP, check-in và lời nhắn khách đã gửi được giữ nguyên. Khách được tạo thêm trên Admin cũng không bị xóa. Cơ chế này giúp việc restart an toàn và không làm hỏng QR đã phát.
 
 Muốn sửa hoặc bổ sung danh sách tự động trên cloud: cập nhật file CSV đã commit, mỗi dòng phải có email duy nhất, push code rồi build/redeploy backend. Có thể chạy đồng bộ ngay trên image hiện tại bằng:
 

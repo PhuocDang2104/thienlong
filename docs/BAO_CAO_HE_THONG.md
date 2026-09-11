@@ -54,7 +54,7 @@ Email trùng trong phạm vi sự kiện được bỏ qua để hạn chế nh�
 
 Repo bàn giao sẵn [`apps/api/data/demo-guests.csv`](../apps/api/data/demo-guests.csv) với đúng ba khách: **Diệp Gia Luật, Ánh Hiếu, Đặng Như Phước**. Docker image chứa file này; trước khi Uvicorn phục vụ request, Compose tự chạy migration rồi `python -m app.seed --guests-file data/demo-guests.csv`.
 
-Lần đầu, mỗi dòng CSV tạo một khách ở trạng thái `pending` và tự nhận token riêng. Các lần sau khớp bằng email duy nhất để cập nhật thông tin nhưng giữ nguyên token, RSVP và check-in. Khách tạo thêm qua UI/API không bị xóa. Muốn bổ sung khách tự động, thêm dòng có email mới vào CSV rồi build/deploy lại backend. Local có thể dùng `--replace-guests` để xóa dữ liệu thử và nạp lại đúng ba người; production cố ý chặn tùy chọn xóa này.
+Lần đầu, mỗi dòng CSV tạo một khách ở trạng thái `pending` và tự nhận token riêng. Các lần sau khớp bằng email duy nhất để cập nhật tên, công ty, email, điện thoại nhưng giữ nguyên token, RSVP, check-in và lời nhắn khách đã gửi. Khách tạo thêm qua UI/API không bị xóa. Muốn bổ sung khách tự động, thêm dòng có email mới vào CSV rồi build/deploy lại backend. Local có thể dùng `--replace-guests` để xóa dữ liệu thử và nạp lại đúng ba người; production cố ý chặn tùy chọn xóa này.
 
 ### Luồng RSVP
 
@@ -67,8 +67,8 @@ sequenceDiagram
     participant Admin as Dashboard Admin
     Guest->>API: GET invitation theo token
     API-->>Guest: Tên, sự kiện, RSVP, giới hạn người đi cùng
-    Guest->>API: PUT RSVP accepted/declined + companions
-    API->>DB: Khóa khách, validate và lưu RSVP + outbox
+    Guest->>API: PUT RSVP + người đi cùng + lời nhắn
+    API->>DB: Khóa khách, validate và lưu RSVP/notes + outbox
     DB-->>API: Commit
     API-->>Guest: Xác nhận đã lưu
     API->>Redis: Dispatcher phát rsvp
@@ -270,19 +270,19 @@ Import gửi `multipart/form-data`, field `file`; không tự đặt header JSON
 
 ```csv
 name,company,email,phone,notes
-Nguyễn Văn A,Công ty ABC,guest-a@example.com,0900000001,Khách VIP
+Nguyễn Văn A,Công ty ABC,guest-a@example.com,0900000001,
 Trần Thị B,Công ty XYZ,,,
 ```
 
-Chỉ `name` bắt buộc có giá trị; email/phone có thể trống. Báo cáo CSV/XLSX chứa cả người chưa đến để đối soát no-show, thời gian và quầy được giữ từ check-in gốc. Chuỗi nguy hiểm kiểu công thức được xử lý khi xuất spreadsheet.
+Chỉ `name` bắt buộc có giá trị; email/phone có thể trống. Cột `notes` để trống khi khách chưa phản hồi; trường này hỗ trợ chuyển dữ liệu lời nhắn đã có từ hệ thống cũ. Báo cáo CSV/XLSX chứa cả người chưa đến để đối soát no-show, thời gian và quầy được giữ từ check-in gốc. Chuỗi nguy hiểm kiểu công thức được xử lý khi xuất spreadsheet.
 
 ### Giao diện và hai danh sách khách
 
-Giao diện dùng trực tiếp logo `thienlong-logo.png`, nền trắng là màu chủ đạo, xanh Thiên Long cho điều hướng/nút chính và đỏ cho điểm nhấn. Card, dialog, nút và bảng có phân lớp shadow, trạng thái hover/focus và hiệu ứng vào trang ngắn; chuyển động tự tắt khi thiết bị bật `prefers-reduced-motion`. Dashboard rút gọn nội dung, tăng cỡ và độ tương phản của KPI, tiến độ, biểu đồ và bảng check-in gần nhất.
+Giao diện dùng trực tiếp logo `thienlong-logo.png`, nền trắng/xám trung tính là màu chủ đạo, xanh Thiên Long cho điều hướng và hành động chính, đỏ cho điểm nhấn nhận diện. Logo nằm trực tiếp trên nền trắng sidebar, không có khung hoặc shadow. Control dùng radius 6–8px; surface dùng border mảnh, nền đặc và shadow rất nhẹ. Dashboard gom KPI thành một dải trạng thái, đặt bảng check-in gần nhất làm vùng công việc chính, bổ sung hàng đợi **Cần theo dõi** và chỉ giữ biểu đồ nhịp check-in phục vụ điều phối quầy.
 
 Trang **Khách mời** có hai tab cùng dùng dữ liệu PostgreSQL:
 
-- **Thư mời**: toàn bộ khách đã nhập/tạo, thông tin liên hệ, phản hồi, **số người thân** và **ghi chú**; lọc theo RSVP. Ghi chú là dữ liệu nội bộ Admin, có thể nhập từ cột `notes` hoặc sửa trong form khách và không trả ra trang mời/PG/Welcome.
+- **Thư mời**: toàn bộ khách đã nhập/tạo, thông tin liên hệ, phản hồi, **số người thân** và **ghi chú khách gửi**; lọc theo RSVP. Khách nhập lời nhắn trong form xác nhận; Admin xem để chuẩn bị hỗ trợ. PG và Welcome không nhận trường này.
 - **Danh sách check-in**: chỉ khách có `rsvp_status=accepted`, hiển thị quy mô đăng ký, đã đến/chưa đến, thời gian và quầy; lọc theo trạng thái check-in.
 
 Khi khách xác nhận tham dự, API commit RSVP và outbox trong PostgreSQL rồi phát event `rsvp` qua Redis/SSE. Tab check-in đang mở nhận event, tải lại query `rsvp_status=accepted` và hiện khách ngay; khi tab chưa mở, lần chuyển tab lấy snapshot mới nhất. Đây là hai cách nhìn trên cùng bản ghi `guests`, không sao chép khách sang bảng phụ nên không có độ lệch giữa danh sách đăng ký và check-in.
@@ -324,7 +324,7 @@ Mở link riêng trên thiết bị LED/TV, dùng chế độ fullscreen trình 
 ## 7. Bảo mật và giới hạn vận hành
 
 - Hash mật khẩu/mã PG, JWT có thời hạn; lưu phiên trong `sessionStorage`, không đưa JWT vào URL.
-- API kiểm tra quyền trên server; dữ liệu ghi chú/liên hệ chỉ trả cho Admin, Guest/PG/Welcome nhận dữ liệu tối thiểu.
+- API kiểm tra quyền trên server; thông tin liên hệ chỉ trả cho Admin. Ghi chú chỉ trả cho Admin và chính trang mời có token tương ứng; PG/Welcome nhận dữ liệu tối thiểu.
 - HTTPS, CORS whitelist, validate dữ liệu và giới hạn request theo cấu hình backend.
 - Request log che các token trong path, không ghi password, mã PG hay JWT; exports và QR mapping vẫn cần giữ riêng.
 - Import dùng preview và transaction; chống check-in trùng ở DB; outbox bảo vệ tính nhất quán giữa DB và event.
@@ -346,7 +346,7 @@ Repo đã có đủ bốn lớp bàn giao:
 Kết quả chạy trên máy bàn giao ngày 11/09/2026:
 
 - Backend: **30 passed** trên pytest, gồm quyền truy cập, RSVP, thêm/import khách và token, CSV seed idempotent, QR/export, KPI, SSE, Redis lỗi/retry, cursor reconnect và hai check-in đồng thời trên PostgreSQL thật. Có 2 cảnh báo deprecation từ bộ TestClient, không phải lỗi ứng dụng.
-- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **11/11** test parser QR và payload welcome đạt; build production đủ 9 route.
+- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **11/11** test parser QR và payload welcome đạt; build production đủ 9 route. Kiểm tra Chromium bổ sung xác nhận lời nhắn từ form RSVP xuất hiện trên bảng Admin qua SSE mà không tải lại.
 - Build production Next.js đạt; 9 route được tạo thành công. Docker image backend build đạt, runtime Linux đọc đúng `Asia/Ho_Chi_Minh` và image không chứa `.env`.
 - Tích hợp API thật đạt với PostgreSQL + Redis: trạng thái sạch đúng 3 khách `pending`, 0 check-in, ba token dài 43 ký tự và ba QR PNG hợp lệ; login, preview/import/deduplicate, RSVP, phân vai, hai request check-in đồng thời cho kết quả một thành công/một 409, export và SSE đến Admin/Welcome.
 - Trình duyệt demo bổ sung đạt luồng QR → form RSVP → dashboard đổi số xác nhận từ 0 lên 1 qua SSE và khách xuất hiện trong tab Danh sách check-in; sau phép thử database đã được reset lại về ba khách chưa phản hồi, chưa check-in.

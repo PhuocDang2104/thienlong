@@ -6,7 +6,7 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 
 `Event`: `{id, name, start_at, venue, counters: string[], max_companions: number}`.
 
-`Guest`: `{id, name, company, email, phone, notes, invite_token, invitation_url, rsvp_status: pending|accepted|declined, companions, checked_in_at: string|null, counter: string|null, created_at}`. `notes` là ghi chú nội bộ, tối đa 1.000 ký tự và chỉ có trong API Admin.
+`Guest`: `{id, name, company, email, phone, notes, invite_token, invitation_url, rsvp_status: pending|accepted|declined, companions, checked_in_at: string|null, counter: string|null, created_at}`. `notes` là lời nhắn khách gửi cho BTC, tối đa 1.000 ký tự; chỉ trang mời mang đúng token và API Admin được đọc.
 
 `PgGuest`: `{guest_token, name, company, rsvp_status, companions, checked_in_at, counter}` (không email, phone, id).
 
@@ -15,8 +15,8 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 ## Public / PG
 
 - GET `/public/event`: Event bỏ id (name, start_at, venue, counters, max_companions).
-- GET `/public/invitations/{token}`: `{guest_name, company, event_name, start_at, venue, rsvp_status, companions, max_companions}`.
-- PUT `/public/invitations/{token}/rsvp`: body `{status: accepted|declined, companions: number}`, response cùng invitation. Declined companions phải 0.
+- GET `/public/invitations/{token}`: `{guest_name, company, event_name, start_at, venue, rsvp_status, companions, notes, max_companions}`.
+- PUT `/public/invitations/{token}/rsvp`: body `{status: accepted|declined, companions: number, notes?: string}`, response cùng invitation. Declined companions phải 0.
 - POST `/pg/session`: `{access_code, counter}` -> `{access_token, token_type: bearer, expires_in, counter}`.
 - GET `/pg/guests/search?q=...`: `PgGuest[]` tối đa 30, min 2 ký tự.
 - GET `/pg/guests/by-token/{token}`: PgGuest.
@@ -29,9 +29,9 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 - GET `/admin/me`: `{id,email}`.
 - GET `/admin/event`: Event + `{welcome_screen_url}`.
 - GET `/admin/guests?search=&rsvp_status=&checkin_status=checked_in|not_checked_in&page=1&page_size=20&sort=name|-name|created_at|-created_at|checked_in_at|-checked_in_at`: `{items: Guest[], total, page, page_size}`.
-- POST `/admin/guests`: `{name,company?,email?,phone?,notes?,rsvp_status?,companions?}` -> Guest, HTTP 201. Backend tự sinh `invite_token`; request không được tự truyền token.
+- POST `/admin/guests`: `{name,company?,email?,phone?,rsvp_status?,companions?}` -> Guest, HTTP 201. Backend tự sinh `invite_token`; request không được tự truyền token hoặc ghi chú thay khách.
 - GET `/admin/guests/{id}`: Guest.
-- PATCH `/admin/guests/{id}`: `{name?,company?,email?,phone?,notes?,rsvp_status?,companions?}` -> Guest.
+- PATCH `/admin/guests/{id}`: `{name?,company?,email?,phone?,rsvp_status?,companions?}` -> Guest.
 - POST `/admin/guests/import/preview`: multipart field `file` CSV/XLSX -> `{rows: [{row_number,name,company,email,phone,notes}], errors: [{row_number,message}], total, valid_count}`. Không ghi DB.
 - POST `/admin/guests/import`: multipart `file` -> `{imported, skipped}`. Atomic, reject nếu lỗi; skip email trùng, không skip tên trùng; token random sinh khi commit.
 - GET `/admin/guests/template.csv`: file mẫu.
@@ -41,7 +41,7 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 - GET `/admin/dashboard/checkins`: `[{time: ISO datetime, count}]`, nhóm 15 phút; optional `from`, `to` ISO.
 - GET `/admin/export/checkins.xlsx` hoặc `.csv`: báo cáo toàn bộ khách (bao gồm chưa đến), định nghĩa KPI như trên.
 
-Seed CLI nhập event/admin/mã PG từ biến env. `--guests-file data/demo-guests.csv` upsert khách theo email: khách mới tự sinh token, khách cũ giữ token/RSVP/check-in và chỉ cập nhật thông tin nguồn. Docker production tự chạy migration và lệnh này trước Uvicorn. `--replace-guests` chỉ được phép ở development để reset toàn bộ dữ liệu khách/check-in. Config EVENT_NAME, EVENT_START_AT, EVENT_VENUE, EVENT_COUNTERS (comma separated), EVENT_MAX_COMPANIONS, ADMIN_EMAIL, ADMIN_PASSWORD, PG_ACCESS_CODE, WELCOME_SCREEN_TOKEN. Backend dùng DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_EXPIRE_MINUTES, APP_ENV, CORS_ORIGINS (comma separated), PUBLIC_FRONTEND_URL.
+Seed CLI nhập event/admin/mã PG từ biến env. `--guests-file data/demo-guests.csv` upsert khách theo email: khách mới tự sinh token; khách cũ chỉ cập nhật tên, công ty, email, điện thoại và giữ token/RSVP/check-in/notes. Docker production tự chạy migration và lệnh này trước Uvicorn. `--replace-guests` chỉ được phép ở development để reset toàn bộ dữ liệu khách/check-in. Config EVENT_NAME, EVENT_START_AT, EVENT_VENUE, EVENT_COUNTERS (comma separated), EVENT_MAX_COMPANIONS, ADMIN_EMAIL, ADMIN_PASSWORD, PG_ACCESS_CODE, WELCOME_SCREEN_TOKEN. Backend dùng DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_EXPIRE_MINUTES, APP_ENV, CORS_ORIGINS (comma separated), PUBLIC_FRONTEND_URL.
 
 ## Cập nhật yêu cầu: Redis + SSE
 
