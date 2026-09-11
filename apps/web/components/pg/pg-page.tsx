@@ -107,6 +107,7 @@ function CheckinDesk({ session, event, onExpired }: { session: Session; event: P
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState<{ query: string; guests: PgGuest[]; loading: boolean; error: string }>({ query: "", guests: [], loading: false, error: "" });
   const [searchRetry, setSearchRetry] = useState(0);
   const [qrValue, setQrValue] = useState("");
@@ -122,7 +123,7 @@ function CheckinDesk({ session, event, onExpired }: { session: Session; event: P
 
   useEffect(() => {
     const value = query.trim();
-    if (value.length < 2 || guest || result) return;
+    if (!searchOpen || value.length < 2 || guest || result) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearch({ query: value, guests: [], loading: true, error: "" });
@@ -136,7 +137,7 @@ function CheckinDesk({ session, event, onExpired }: { session: Session; event: P
       }
     }, 350);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [query, guest, result, searchRetry, session.access_token, onExpired]);
+  }, [query, searchOpen, guest, result, searchRetry, session.access_token, onExpired]);
 
   const identify = useCallback(async (token: string) => {
     if (locked.current) return;
@@ -168,6 +169,7 @@ function CheckinDesk({ session, event, onExpired }: { session: Session; event: P
 
   const reset = () => {
     setGuest(null); setResult(null); setError(""); setQrValue(""); setQuery("");
+    setSearchOpen(false);
     setSearch({ query: "", guests: [], loading: false, error: "" });
     locked.current = false; lastScan.current = { value: "", time: 0 };
   };
@@ -210,17 +212,19 @@ function CheckinDesk({ session, event, onExpired }: { session: Session; event: P
         </section>
       ) : (
         <>
-          {busy ? <div className="card-shell flex aspect-[4/3] items-center justify-center gap-3 rounded-2xl text-sm text-slate-500" role="status"><LoaderCircle className="size-5 animate-spin" />Đang nhận diện khách…</div> : <GuestQrScanner onScan={scan} />}
+          {searchOpen ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-semibold">Tìm khách theo tên</h2><p className="mt-1 text-sm text-slate-500">Nhập tên trên danh sách khách mời.</p></div><button type="button" onClick={() => { setSearchOpen(false); setQuery(""); setError(""); }} className="min-h-10 shrink-0 text-sm font-semibold text-primary">Quét QR</button></div>
+              <div className="relative mt-5"><Search className="absolute left-3 top-4 size-4 text-slate-400" /><input autoFocus aria-label="Tìm khách theo tên" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ví dụ: Diệp Gia Luật" maxLength={100} disabled={busy} className={`${inputClass} pl-10`} /></div>
+              {query.trim().length > 0 && query.trim().length < 2 && <p className="mt-2 text-xs text-slate-500">Nhập ít nhất 2 ký tự.</p>}
+              {query.trim().length >= 2 && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200" aria-live="polite">
+                  {search.query !== query.trim() || search.loading ? <p className="p-4 text-sm text-slate-500">Đang tìm khách…</p> : search.error ? <div className="p-4"><p className="text-sm text-red-700">{search.error}</p><button onClick={() => setSearchRetry((value) => value + 1)} className="mt-2 min-h-10 text-sm font-semibold text-[#163c74]">Thử lại</button></div> : search.guests.length === 0 ? <p className="p-4 text-sm leading-6 text-slate-500">Không tìm thấy tên phù hợp. Kiểm tra dấu hoặc nhập phần khác trong tên.</p> : <><ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto">{search.guests.map((item) => <li key={item.guest_token}><button disabled={busy} onClick={() => void identify(item.guest_token)} className="flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"><div className="min-w-0 flex-1"><p className="font-medium">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.company || "Chưa có đơn vị"}{item.checked_in_at ? " · Đã check-in" : ""}</p></div>{busy ? <LoaderCircle className="size-4 shrink-0 animate-spin text-primary"/> : <ChevronRight className="size-4 shrink-0 text-slate-400" />}</button></li>)}</ul>{search.guests.length === 30 && <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Hiển thị 30 kết quả đầu tiên. Nhập tên cụ thể hơn để thu hẹp danh sách.</p>}</>}
+                </div>
+              )}
+            </section>
+          ) : <><GuestQrScanner onScan={scan} processing={busy} /><button type="button" onClick={() => { setSearchOpen(true); setError(""); }} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#163c74] hover:bg-slate-50"><Search className="size-4" />Không quét được? Tìm theo tên</button></>}
           {error && <div className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-sm leading-6 text-amber-900" role="alert"><CircleAlert className="mt-1 size-4 shrink-0" /><p className="flex-1">{error}</p><button aria-label="Đóng thông báo" className="flex size-8 shrink-0 items-center justify-center" onClick={() => setError("")}><X className="size-4" /></button></div>}
-          <section className="mt-7 border-t border-slate-200 pt-7">
-            <h2 className="text-base font-semibold">Tìm khách theo tên</h2><p className="mt-1 text-sm text-slate-500">Dùng khi khách không mang theo QR.</p>
-            <div className="relative mt-4"><Search className="absolute left-3 top-4 size-4 text-slate-400" /><input aria-label="Tìm khách theo tên" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nhập ít nhất 2 ký tự…" maxLength={100} disabled={busy} className={`${inputClass} pl-10`} /></div>
-            {query.trim().length >= 2 && (
-              <div className="card-shell mt-3 overflow-hidden rounded-xl" aria-live="polite">
-                {search.query !== query.trim() || search.loading ? <p className="p-4 text-sm text-slate-500">Đang tìm khách…</p> : search.error ? <div className="p-4"><p className="text-sm text-red-700">{search.error}</p><button onClick={() => setSearchRetry((value) => value + 1)} className="mt-2 min-h-10 text-sm font-semibold text-[#163c74]">Thử lại</button></div> : search.guests.length === 0 ? <p className="p-4 text-sm leading-6 text-slate-500">Không tìm thấy khách phù hợp. Thử tên khác hoặc liên hệ Ban tổ chức.</p> : <><ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto">{search.guests.map((item) => <li key={item.guest_token}><button disabled={busy} onClick={() => void identify(item.guest_token)} className="flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"><div className="min-w-0 flex-1"><p className="font-medium">{item.name}</p><p className="mt-1 text-xs text-slate-500">{item.company || "Chưa có đơn vị"}{item.checked_in_at ? " · Đã check-in" : ""}</p></div><ChevronRight className="size-4 shrink-0 text-slate-400" /></button></li>)}</ul>{search.guests.length === 30 && <p className="border-t border-slate-100 p-3 text-xs text-slate-500">Hiển thị 30 kết quả đầu tiên. Nhập tên cụ thể hơn để thu hẹp danh sách.</p>}</>}
-              </div>
-            )}
-          </section>
           <details className="card-shell mt-6 rounded-xl p-4"><summary className="cursor-pointer text-sm font-semibold text-slate-600">Nhập đường dẫn QR</summary><form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); scan(qrValue); }}><label htmlFor="pg-qr-url" className="block text-xs leading-5 text-slate-500">Dán đường dẫn đầy đủ trên thư mời của khách.</label><input id="pg-qr-url" value={qrValue} onChange={(e) => setQrValue(e.target.value)} type="url" required maxLength={500} placeholder="https://…/i/…" className={inputClass} disabled={busy} /><button type="submit" className={`${primaryClass} w-full`} disabled={busy || !qrValue.trim()}><QrCode className="size-4" />Nhận diện khách</button></form></details>
         </>
       )}

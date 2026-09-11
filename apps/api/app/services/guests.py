@@ -64,3 +64,8 @@ def search_clause(value: str):
     escaped = value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     pattern = f'%{escaped}%'
     return Guest.name.ilike(pattern, escape='\\') | Guest.company.ilike(pattern, escape='\\')
+
+
+def name_search_clause(value: str):
+    escaped = value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    return Guest.name.ilike(f'%{escaped}%', escape='\\')

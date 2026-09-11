@@ -18,7 +18,7 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 - GET `/public/invitations/{token}`: `{guest_name, company, event_name, start_at, venue, rsvp_status, companions, notes, max_companions}`.
 - PUT `/public/invitations/{token}/rsvp`: body `{status: accepted|declined, companions: number, notes?: string}`, response cùng invitation. Declined companions phải 0.
 - POST `/pg/session`: `{access_code, counter}` -> `{access_token, token_type: bearer, expires_in, counter}`.
-- GET `/pg/guests/search?q=...`: `PgGuest[]` tối đa 30, min 2 ký tự.
+- GET `/pg/guests/search?q=...`: tìm theo **tên khách**, trả `PgGuest[]` tối đa 30, min 2 ký tự.
 - GET `/pg/guests/by-token/{token}`: PgGuest.
 - POST `/pg/checkins`: `{guest_token, counter}` -> Checkin; counter phải khớp JWT.
 - GET `/public/welcome/{screen_token}`: `{event_name, latest_guest: {id, name, company, checked_in_at}|null}`. Snapshot ban đầu. Hiển thị 7 giây, client bỏ qua id đã hiển thị.

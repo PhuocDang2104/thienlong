@@ -35,7 +35,7 @@ npm ci
 npm run dev
 ```
 
-Mở http://localhost:3000. Tài khoản local do script tạo và điền sẵn trên form: `admin@example.com` / `LocalDemo-ChangeMe-2026!`; mã PG `TL-DEMO-2026`. Lệnh `--demo` đồng bộ đúng ba khách trong [`apps/api/data/demo-guests.csv`](apps/api/data/demo-guests.csv), tự sinh token cho khách mới và giữ token khi chạy lại. Script không ghi đè cấu hình đã tồn tại. Link Welcome và QR thật lấy trong giao diện quản trị. Trên Linux/macOS thay `.venv/Scripts/python` bằng `.venv/bin/python`.
+Mở http://localhost:3000. Tài khoản local do script tạo và điền sẵn trên form: `admin@example.com` / `LocalDemo-ChangeMe-2026!`; mã PG `thienlong-pg`. Lệnh `--demo` đồng bộ đúng ba khách trong [`apps/api/data/demo-guests.csv`](apps/api/data/demo-guests.csv), tự sinh token cho khách mới và giữ token khi chạy lại. Script không ghi đè cấu hình đã tồn tại. Link Welcome và QR thật lấy trong giao diện quản trị. Trên Linux/macOS thay `.venv/Scripts/python` bằng `.venv/bin/python`.
 
 ## Tài liệu bàn giao
 

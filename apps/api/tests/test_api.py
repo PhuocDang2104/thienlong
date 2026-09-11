@@ -99,7 +99,9 @@ def test_checkin_atomic_duplicate_counter_and_rsvp_lock(system, pg_headers, admi
 
 def test_pg_lookup_manual_search_and_checkin(system, pg_headers):
     search = system.client.get('/api/v1/pg/guests/search?q=An', headers=pg_headers)
-    assert search.status_code == 200 and len(search.json()) == 2
+    assert search.status_code == 200 and len(search.json()) == 1
+    assert search.json()[0]['name'] == 'Nguyễn Văn An'
+    assert system.client.get('/api/v1/pg/guests/search?q=Công%20ty', headers=pg_headers).json() == []
     for guest in search.json():
         assert not {'email', 'phone', 'notes', 'id', 'invitation_url'} & guest.keys()
     token = search.json()[0]['guest_token']

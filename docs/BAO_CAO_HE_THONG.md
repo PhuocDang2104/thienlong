@@ -291,7 +291,8 @@ Khi khách xác nhận tham dự, API commit RSVP và outbox trong PostgreSQL r�
 
 ### Đăng nhập
 
-- Local sau khi chạy `scripts/setup_local.py`: Admin dùng `admin@example.com` / `LocalDemo-ChangeMe-2026!`; PG dùng mã `TL-DEMO-2026` và chọn quầy.
+- Local sau khi chạy `scripts/setup_local.py`: Admin dùng `admin@example.com` / `LocalDemo-ChangeMe-2026!`; PG dùng mã `thienlong-pg` và chọn quầy.
+- Máy quét PG ưu tiên camera sau chính, yêu cầu Full HD/focus liên tục và zoom nhẹ khi thiết bị hỗ trợ; vùng giải mã 720px chạy liên tục. Nếu QR không đọc được, PG chọn **Tìm theo tên** và kết quả chỉ đối chiếu trường tên khách.
 - Form local tự điền Admin từ `NEXT_PUBLIC_DEMO_ADMIN_EMAIL` / `NEXT_PUBLIC_DEMO_ADMIN_PASSWORD` để demo nhanh. Cloud demo có thể khai cùng hai biến trên Vercel; vì `NEXT_PUBLIC_*` đọc được ở browser, deployment thật nên bỏ chúng để form trống.
 - Production: Admin dùng giá trị `ADMIN_EMAIL` / `ADMIN_PASSWORD`; PG dùng `PG_ACCESS_CODE` đã khai ở backend. Lệnh seed tạo hoặc cập nhật hash trong PostgreSQL, không lưu mật khẩu rõ trong bảng.
 - Khách mời không đăng nhập; token trong link/QR xác định đúng lời mời. Welcome dùng screen token riêng trong URL.

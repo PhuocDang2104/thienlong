@@ -110,7 +110,7 @@ Sinh **mỗi secret một giá trị khác nhau**, ví dụ `openssl rand -hex 3
 | `EVENT_MAX_COMPANIONS` | Số người đi cùng tối đa mỗi lời mời |
 | `ADMIN_EMAIL` | Email đăng nhập BTC |
 | `ADMIN_PASSWORD` | Mật khẩu mạnh do bạn đặt |
-| `PG_ACCESS_CODE` | Mã chung chỉ cấp cho PG của sự kiện |
+| `PG_ACCESS_CODE` | `thienlong-pg` theo cấu hình bàn giao |
 | `WELCOME_SCREEN_TOKEN` | Token ngẫu nhiên dài; bảo vệ link màn hình chào |
 
 Chọn tên frontend trước khi in QR. URL QR dùng `PUBLIC_FRONTEND_URL`; sau khi in phải duy trì domain và đường dẫn `/i/{token}`. Đổi env không sửa QR đã in.
@@ -294,6 +294,30 @@ docker compose --env-file .env -f deploy/docker-compose.yml exec -T postgres \
 Không dùng `docker compose down -v`: thao tác đó xóa volume dữ liệu. Redis dùng AOF để hỗ trợ reconnect; PostgreSQL và backup mới là nơi phục hồi dữ liệu nghiệp vụ. Sau khi restore DB hoặc mất Redis, tải lại các màn hình để lấy snapshot; không hứa phát lại vô hạn lịch sử SSE đã bị trim.
 
 ## 9. Cập nhật và rollback
+
+### Cập nhật bản camera PG và mã `thienlong-pg`
+
+Trên máy phát triển, kiểm tra rồi đẩy commit đã hoàn thiện:
+
+```bash
+git status
+git push origin main
+```
+
+Vercel tự build frontend từ `main`. Trên VNPT Cloud, kéo cùng commit, đổi mã PG trong `.env`, cập nhật hash trong PostgreSQL và rebuild backend:
+
+```bash
+cd /opt/thienlong-checkin
+git pull --ff-only origin main
+sed -i 's/^PG_ACCESS_CODE=.*/PG_ACCESS_CODE=thienlong-pg/' .env
+docker compose --env-file .env -f deploy/docker-compose.yml build backend
+docker compose --env-file .env -f deploy/docker-compose.yml run --rm backend python -m app.seed --update-config
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --force-recreate backend
+docker compose --env-file .env -f deploy/docker-compose.yml ps
+curl -fsS https://thienlong-api.duckdns.org/health/ready
+```
+
+`--update-config` tăng phiên bản session nên các phiên PG/Admin cũ sẽ đăng xuất; đăng nhập PG lại bằng `thienlong-pg`. Không cần rebuild Caddy vì endpoint và domain không đổi. Vào Vercel → Deployments kiểm tra deployment của đúng Git SHA đã ở trạng thái Ready, rồi thử camera trên điện thoại thật qua HTTPS.
 
 1. Backup DB và ghi lại Git commit/image đang chạy.
 2. Checkout phiên bản đã kiểm thử; chạy build, migration bằng lệnh bước 4.

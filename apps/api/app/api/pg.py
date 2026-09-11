@@ -8,7 +8,7 @@ from app.core.security import create_session, limiter, pg_required, verify_passw
 from app.models import Guest
 from app.schemas import CheckinRequest, CheckinResponse, PgGuestResponse, PgSessionRequest, PgSessionResponse
 from app.services.checkins import perform_checkin
-from app.services.guests import get_by_token, get_event, search_clause, serialize_pg_guest
+from app.services.guests import get_by_token, get_event, name_search_clause, serialize_pg_guest
 
 router = APIRouter(prefix='/pg', tags=['PG check-in'])
 
@@ -28,7 +28,7 @@ def pg_session(body: PgSessionRequest, request: Request, db: Session = Depends(g
 def search(q: str = Query(min_length=2, max_length=200), db: Session = Depends(get_db), session: dict = Depends(pg_required)):
     if len(q.strip()) < 2:
         raise HTTPException(422, 'Nhập ít nhất 2 ký tự để tìm kiếm.')
-    guests = db.scalars(select(Guest).where(Guest.event_id == 1, search_clause(q.strip())).order_by(Guest.name, Guest.id).limit(30)).all()
+    guests = db.scalars(select(Guest).where(Guest.event_id == 1, name_search_clause(q.strip())).order_by(Guest.name, Guest.id).limit(30)).all()
     return [serialize_pg_guest(guest) for guest in guests]
 
 

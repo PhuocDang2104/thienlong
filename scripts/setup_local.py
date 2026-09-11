@@ -29,7 +29,7 @@ EVENT_COUNTERS=COUNTER_01,COUNTER_02,COUNTER_03
 EVENT_MAX_COMPANIONS=3
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=LocalDemo-ChangeMe-2026!
-PG_ACCESS_CODE=TL-DEMO-2026
+PG_ACCESS_CODE=thienlong-pg
 WELCOME_SCREEN_TOKEN={secrets.token_urlsafe(32)}
 ''')
 create("apps/web/.env.local", '''NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
@@ -37,5 +37,5 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_DEMO_ADMIN_EMAIL=admin@example.com
 NEXT_PUBLIC_DEMO_ADMIN_PASSWORD=LocalDemo-ChangeMe-2026!
 ''')
-print("Local demo credentials: admin@example.com / LocalDemo-ChangeMe-2026!; PG: TL-DEMO-2026")
+print("Local demo credentials: admin@example.com / LocalDemo-ChangeMe-2026!; PG: thienlong-pg")
 print("These credentials are for local development only. Production uses your own secrets.")

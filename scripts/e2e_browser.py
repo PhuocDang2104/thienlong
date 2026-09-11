@@ -104,10 +104,12 @@ def main():
         expect(welcome.get_by_text(names[0], exact=True)).not_to_be_visible(timeout=11000)
 
         pg.get_by_role("button", name="Khách tiếp theo").click()
+        pg.get_by_role("button", name=re.compile("Tìm theo tên")).click()
         pg.get_by_label("Tìm khách theo tên", exact=True).fill(names[0])
         pg.get_by_role("button", name=re.compile(re.escape(names[0]))).click()
         expect(pg.get_by_text("Khách đã check-in", exact=True)).to_be_visible()
         pg.get_by_role("button", name="Khách tiếp theo").click()
+        pg.get_by_role("button", name=re.compile("Tìm theo tên")).click()
         pg.get_by_label("Tìm khách theo tên", exact=True).fill(names[1])
         pg.get_by_role("button", name=re.compile(re.escape(names[1]))).click()
         pg.get_by_role("button", name="Xác nhận check-in", exact=True).click()
