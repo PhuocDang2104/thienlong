@@ -1,0 +1,18 @@
+# Add this NEW site block to the EXISTING Caddyfile used by minute_caddy.
+# Replace the domain; thienlong-api is a network alias from docker-compose.yml.
+thienlong-api.duckdns.org {
+	@stream path /api/v1/admin/stream /api/v1/public/welcome/*/stream
+	handle @stream {
+		reverse_proxy thienlong-api:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy thienlong-api:8000
+	}
+}
