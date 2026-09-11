@@ -45,6 +45,38 @@ docker network inspect YOUR_CADDY_NETWORK --format '{{json .IPAM.Config}}'
 
 Không dùng `*` khi có client không đáng tin truy cập được container; FastAPI/Uvicorn chỉ nên tin forwarded headers từ proxy đã xác định. [FastAPI behind a proxy](https://fastapi.tiangolo.com/advanced/behind-a-proxy/).
 
+### Sửa lỗi `wget: bad address 'thienlong-api:8000'`
+
+Lỗi này xảy ra trước HTTP: DNS nội bộ Docker trong container Caddy không thấy alias `thienlong-api`. Nó không liên quan tới cú pháp Caddyfile. Từ thư mục repo trên cloud, kiểm tra backend và hai phía của network:
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml ps
+docker inspect minute_caddy --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}'
+BACKEND_ID="$(docker compose --env-file .env -f deploy/docker-compose.yml ps -q backend)"
+docker inspect "$BACKEND_ID" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}'
+```
+
+Nếu backend chưa chạy, xem lỗi trước khi sửa Caddy:
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build --wait
+docker compose --env-file .env -f deploy/docker-compose.yml logs --tail=150 backend
+```
+
+Nếu Caddy và backend không có ít nhất một network trùng tên, sửa `CADDY_NETWORK` trong `.env` thành đúng một network đang gắn với `minute_caddy`, rồi recreate backend để Compose gắn alias:
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --force-recreate backend
+docker exec minute_caddy wget -qO- http://thienlong-api:8000/health
+```
+
+Có thể chạy kiểm tra chỉ đọc đã đóng gói trong repo. Script dừng và chỉ rõ backend chưa chạy, không có shared network, Docker DNS lỗi hay HTTPS lỗi:
+
+```bash
+chmod +x deploy/verify-cloud.sh
+./deploy/verify-cloud.sh
+```
+
 ## 3. Clone và khai báo backend
 
 ```bash
@@ -167,6 +199,16 @@ curl -fsS https://thienlong-api.duckdns.org/health
 curl -fsS https://thienlong-api.duckdns.org/health/ready
 ```
 
+Cảnh báo `Caddyfile input is not formatted` không làm validate/reload thất bại; có thể xử lý sau bằng `caddy fmt`. Nếu `curl` báo `tlsv1 alert internal error`, xem lỗi cấp certificate của đúng domain rồi kiểm tra DNS trước khi tiếp tục:
+
+```bash
+docker logs --since 15m minute_caddy 2>&1 | grep -Ei 'thienlong|certificate|acme|tls|error'
+getent ahostsv4 thienlong-api.duckdns.org
+getent ahostsv6 thienlong-api.duckdns.org
+```
+
+Bản ghi A phải trỏ về IPv4 public của VM. Chỉ giữ AAAA khi VM thật sự nhận IPv6 và cổng 80/443 đi được qua IPv6. Sau khi sửa DNS hoặc firewall, reload Caddy, chờ quá trình ACME hoàn tất trong log rồi mới thử lại `curl`; lỗi upstream thông thường cho HTTP 502, còn lỗi ở bước TLS xảy ra trước khi request tới FastAPI.
+
 Nếu Caddy mount một file đơn lẻ, một số editor thay file bằng rename khiến container còn thấy inode cũ. Kiểm tra nội dung bằng `docker exec minute_caddy cat /etc/caddy/Caddyfile`; đảm bảo container nhận đúng bản vừa sửa trước reload. Không recreate Caddy khi chưa đánh giá ảnh hưởng các app khác.
 
 Không bật access log chứa nguyên URL `/i/{token}`, `/public/invitations/{token}` hoặc `/welcome/{token}`; link là thông tin truy cập. Backend đã che token trong request log và tắt access log mặc định Uvicorn.
@@ -183,6 +225,16 @@ Không bật access log chứa nguyên URL `/i/{token}`, `/public/invitations/{t
 |---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `https://thienlong-api.duckdns.org/api/v1` |
 | `NEXT_PUBLIC_APP_URL` | `https://thienlong-event.vercel.app` |
+
+Nếu build báo `NEXT_PUBLIC_API_BASE_URL is required for production builds`, vào **Project → Settings → Environment Variables**, tạo đủ hai biến trên và chọn môi trường **Production**. Sau đó vào **Deployments → deployment mới nhất → Redeploy**. Biến thêm sau khi một deployment đã chạy không được áp dụng ngược vào build cũ. Có thể kiểm tra bằng Vercel CLI từ thư mục `apps/web` đã link project:
+
+```bash
+vercel env ls production
+vercel pull --environment=production
+vercel build --prod
+```
+
+`NEXT_PUBLIC_API_BASE_URL` phải có `/api/v1`; không thêm dấu `/` cuối. `NEXT_PUBLIC_APP_URL` là URL frontend thực tế, không phải URL API. Build cố ý dừng khi thiếu hai giá trị để tránh phát hành frontend production nhưng âm thầm gọi `localhost`.
 
 Để form Admin tự điền tài khoản trên một deployment demo, thêm hai biến tùy chọn và đặt trùng với `ADMIN_EMAIL` / `ADMIN_PASSWORD` của backend:
 

@@ -2,7 +2,7 @@
   "name": "thienlong-event-web",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22.13.0" },
+  "engines": { "node": "22.x" },
   "scripts": { "dev": "next dev --webpack", "build": "next build --webpack", "start": "next start", "lint": "eslint .", "typecheck": "next typegen && tsc --noEmit", "test": "node --experimental-strip-types --test lib/*.test.mjs" },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
