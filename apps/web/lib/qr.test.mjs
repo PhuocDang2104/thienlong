@@ -1,30 +1,28 @@
 import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { test } from "node:test";
 import { parseInvitationQr } from "./qr.ts";
 
 const origin = "https://event.example.com";
 const token = "x7_Ap9rVq2nB4kH8dTmY3sWuNzLf6CeQ";
-const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-afterEach(() => {
-  if (originalAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
-  else process.env.NEXT_PUBLIC_APP_URL = originalAppUrl;
-});
 
 test("extracts only the guest token from a complete invitation URL", () => {
   assert.equal(parseInvitationQr(`${origin}/i/${token}`, origin), token);
   assert.equal(parseInvitationQr(`  ${origin}/i/${token}/  `, origin), token);
 });
 
-test("accepts the canonical invitation domain while PG runs on another approved frontend", () => {
-  process.env.NEXT_PUBLIC_APP_URL = "https://invite.example.com";
-  assert.equal(parseInvitationQr(`https://invite.example.com/i/${token}`, origin), token);
+test("accepts a backend-generated production QR while PG runs on another Vercel deployment", () => {
+  const pgDeployment = "https://thienlong-preview-123.vercel.app";
+  const invitationUrl = `https://thienlong-ten.vercel.app/i/${token}`;
+  assert.equal(parseInvitationQr(invitationUrl, pgDeployment), token);
 });
 
-test("rejects external and lookalike domains even with a valid invitation path", () => {
-  delete process.env.NEXT_PUBLIC_APP_URL;
-  for (const untrusted of ["https://other.example.com", "https://event.example.com.attacker.test", "http://event.example.com"]) {
-    assert.equal(parseInvitationQr(`${untrusted}/i/${token}`, origin), null);
+test("accepts an older HTTPS invitation host because the API validates the token", () => {
+  assert.equal(parseInvitationQr(`https://old-event-domain.example.com/i/${token}`, origin), token);
+});
+
+test("rejects insecure remote origins even with an invitation-shaped path", () => {
+  for (const insecure of ["http://other.example.com", "http://event.example.com", "ftp://event.example.com"]) {
+    assert.equal(parseInvitationQr(`${insecure}/i/${token}`, origin), null);
   }
 });
 

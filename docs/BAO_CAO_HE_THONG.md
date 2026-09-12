@@ -80,7 +80,7 @@ Khách không đăng nhập. Từ chối tham dự tương ứng `companions = 0
 ### Luồng check-in
 
 1. PG nhập mã chung và chọn quầy. API xác thực rồi cấp JWT tạm thời gắn với sự kiện và quầy.
-2. Camera đọc QR, frontend lấy token từ đường dẫn `/i/...` và gọi API xem tên/đơn vị.
+2. Camera đọc QR HTTPS có đúng đường dẫn `/i/{token}`, lấy riêng token rồi gọi API Thiên Long xem tên/đơn vị. Frontend không điều hướng hoặc gọi domain trong QR; backend so khớp token mật mã với PostgreSQL nên domain Vercel cũ/alias không làm QR hợp lệ bị loại nhầm, còn token giả vẫn trả 404.
 3. PG kiểm tra đúng người rồi bấm xác nhận. Việc đọc QR chưa tự check-in.
 4. API kiểm tra quyền, sự kiện và quầy; ghi check-in cùng outbox.
 5. PostgreSQL có `UNIQUE(event_id, guest_id)`: hai PG cùng thao tác chỉ một bản ghi hợp lệ. Request trùng trả HTTP 409, giữ giờ/quầy đầu tiên.
@@ -348,7 +348,7 @@ Repo đã có đủ bốn lớp bàn giao:
 Kết quả chạy trên máy bàn giao ngày 12/09/2026:
 
 - Backend: **30 passed, 2 skipped** trên pytest local, gồm quyền truy cập, RSVP, thêm/import/xóa khách và token, CSV seed idempotent, quy tắc tên QR, export, KPI, SSE, Redis lỗi/retry và cursor reconnect. Hai test cạnh tranh PostgreSQL cần `TEST_DATABASE_URL` nên được bỏ qua trên máy local; có 2 cảnh báo deprecation từ TestClient, không phải lỗi ứng dụng.
-- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **16/16** test camera, tên file QR, parser QR và payload welcome đạt; build production đủ 9 route.
+- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **17/17** test camera, tên file QR, parser QR và payload welcome đạt; build production đủ 9 route.
 - Build production Next.js đạt; 9 route được tạo thành công. Docker image backend build đạt, runtime Linux đọc đúng `Asia/Ho_Chi_Minh` và image không chứa `.env`.
 - Tích hợp API thật đạt với PostgreSQL + Redis: trạng thái sạch đúng 3 khách `pending`, 0 check-in, ba token dài 43 ký tự và ba QR PNG hợp lệ; login, preview/import/deduplicate, RSVP, phân vai, hai request check-in đồng thời cho kết quả một thành công/một 409, export và SSE đến Admin/Welcome.
 - Trình duyệt demo bổ sung đạt luồng QR → form RSVP → dashboard đổi số xác nhận từ 0 lên 1 qua SSE và khách xuất hiện trong tab Danh sách check-in; sau phép thử database đã được reset lại về ba khách chưa phản hồi, chưa check-in.
