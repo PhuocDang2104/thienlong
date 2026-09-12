@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 settings = get_settings()
 app = FastAPI(title='Thiên Long Event API', version='1.0.0', lifespan=lifespan, docs_url='/docs' if settings.app_env != 'production' else None, redoc_url=None, openapi_url='/openapi.json' if settings.app_env != 'production' else None)
-app.add_middleware(CORSMiddleware, allow_origins=settings.origins, allow_credentials=False, allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'], allow_headers=['Authorization', 'Content-Type', 'Last-Event-ID'], expose_headers=['Content-Disposition', 'Retry-After'])
+app.add_middleware(CORSMiddleware, allow_origins=settings.origins, allow_credentials=False, allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], allow_headers=['Authorization', 'Content-Type', 'Last-Event-ID'], expose_headers=['Content-Disposition', 'Retry-After'])
 
 
 @app.middleware('http')

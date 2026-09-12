@@ -313,5 +313,8 @@ def test_health_openapi_and_cors(system):
     assert 'CheckinResponse' in document['components']['schemas']
     good = system.client.options('/api/v1/admin/me', headers={'Origin': 'http://localhost:3000', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization,last-event-id'})
     assert good.status_code == 200 and good.headers['access-control-allow-origin'] == 'http://localhost:3000'
+    delete_preflight = system.client.options('/api/v1/admin/guests', headers={'Origin': 'http://localhost:3000', 'Access-Control-Request-Method': 'DELETE', 'Access-Control-Request-Headers': 'authorization'})
+    assert delete_preflight.status_code == 200
+    assert 'DELETE' in delete_preflight.headers['access-control-allow-methods']
     bad = system.client.options('/api/v1/admin/me', headers={'Origin': 'https://evil.example', 'Access-Control-Request-Method': 'GET'})
     assert bad.status_code == 400 and 'access-control-allow-origin' not in bad.headers
