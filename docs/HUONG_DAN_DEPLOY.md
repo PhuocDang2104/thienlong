@@ -115,7 +115,7 @@ Sinh **mỗi secret một giá trị khác nhau**, ví dụ `openssl rand -hex 3
 
 Chọn tên frontend trước khi in QR. URL QR dùng `PUBLIC_FRONTEND_URL`; sau khi in phải duy trì domain và đường dẫn `/i/{token}`. Đổi env không sửa QR đã in.
 
-## 4. Build, migration, tạo sự kiện, tài khoản và ba khách demo
+## 4. Build, migration và tạo cấu hình hệ thống
 
 Các lệnh từ `/opt/thienlong-checkin`:
 
@@ -131,23 +131,22 @@ Lệnh khởi động của container tự chạy tuần tự:
 
 ```text
 alembic upgrade head
-python -m app.seed --guests-file data/demo-guests.csv
+python -m app.seed
 uvicorn
 ```
 
-Vì vậy lần deploy đầu sẽ tạo schema, sự kiện, Admin và đúng ba khách **Diệp Gia Luật, Ánh Hiếu, Đặng Như Phước** từ [`demo-guests.csv`](../apps/api/data/demo-guests.csv). Với mỗi email mới, backend tạo một token mật mã 256 bit rồi lưu ngay trên bản ghi khách. QR không phải file cố định trong database; endpoint QR và ZIP dựng PNG từ `PUBLIC_FRONTEND_URL + /i/{token}`, nên dùng được ngay sau khi seed.
+Lần deploy đầu tạo schema, sự kiện và tài khoản Admin. Production **không tự nạp lại khách khi restart**, vì vậy nút **Xóa tất cả** trên trang Khách mời có thể dọn dữ liệu cũ trước khi bạn nhập CSV mới mà danh sách demo không quay lại.
 
-Các lần restart/deploy sau **upsert theo email**: tên, công ty và điện thoại thay đổi theo CSV; token, RSVP, check-in và lời nhắn khách đã gửi được giữ nguyên. Khách được tạo thêm trên Admin cũng không bị xóa. Cơ chế này giúp việc restart an toàn và không làm hỏng QR đã phát.
+Luồng chuẩn là đăng nhập Admin → **Khách mời → Nhập file** → preview → xác nhận import. Với mỗi dòng mới, backend sinh token mật mã 256 bit và lưu trên khách. Sau đó tải ZIP QR; mỗi PNG có tên `ho-va-ten-thienlong.png`, ví dụ `dang-nhu-phuoc-thienlong.png`. Nếu trùng họ tên, file tiếp theo thêm `-2`, `-3` để ZIP không ghi đè. QR chứa `PUBLIC_FRONTEND_URL + /i/{token}` và dùng được ngay.
 
-Muốn sửa hoặc bổ sung danh sách tự động trên cloud: cập nhật file CSV đã commit, mỗi dòng phải có email duy nhất, push code rồi build/redeploy backend. Có thể chạy đồng bộ ngay trên image hiện tại bằng:
+Repo vẫn giữ ba khách mẫu trong [`demo-guests.csv`](../apps/api/data/demo-guests.csv). Chỉ khi muốn nạp file này có chủ đích trên cloud mới chạy:
 
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.yml run --rm backend \
   python -m app.seed --guests-file data/demo-guests.csv
-docker compose --env-file .env -f deploy/docker-compose.yml up -d --force-recreate backend
 ```
 
-Không dùng `--replace-guests` trên cloud; tùy chọn này chỉ hoạt động với `APP_ENV=development` và xóa toàn bộ khách/check-in để đưa local về dữ liệu demo sạch. Seed tạo event và admin nếu chưa tồn tại; chạy lại không tự đổi cấu hình đang dùng. Khi cần cập nhật cấu hình event/mật khẩu/mã PG, sửa `.env`, chạy có chủ đích:
+Không dùng `--replace-guests` trên cloud; tùy chọn này chỉ hoạt động với `APP_ENV=development`. Trên production, việc xóa một khách hoặc toàn bộ danh sách thực hiện trong Admin, có hộp thoại xác nhận và cập nhật các màn hình qua SSE. Seed tạo event và admin nếu chưa tồn tại; chạy lại không tự đổi cấu hình đang dùng. Khi cần cập nhật cấu hình event/mật khẩu/mã PG, sửa `.env`, chạy có chủ đích:
 
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.yml run --rm backend python -m app.seed --update-config
@@ -262,7 +261,7 @@ curl -i -X OPTIONS https://thienlong-api.duckdns.org/api/v1/admin/stream \
 
 Đăng nhập Admin bằng UI. DevTools → Network → `/admin/stream`: HTTP 200, `Content-Type: text/event-stream`, request ở trạng thái pending là bình thường. Header Authorization chứa session; không chia sẻ ảnh chụp có token.
 
-Mở dashboard và welcome ở hai màn hình. PG check-in một khách thử đã import: dashboard tự cập nhật, welcome hiện đúng tên, trở về chờ sau 7 giây. Tắt mạng tab rồi bật lại: SSE reconnect, không check-in lại và không hiện trùng khách. Mở 2 PG check-in cùng một QR: một request thành công, request còn lại HTTP 409 với giờ/quầy đầu tiên.
+Mở dashboard và welcome ở hai màn hình. Nút Welcome đang tạm ẩn trên Dashboard; dùng `https://thienlong-ten.vercel.app/welcome/GIA_TRI_WELCOME_SCREEN_TOKEN` để kiểm tra. PG check-in một khách thử đã import: dashboard tự cập nhật, welcome hiện đúng tên, trở về chờ sau 7 giây. Tắt mạng tab rồi bật lại: SSE reconnect, không check-in lại và không hiện trùng khách. Mở 2 PG check-in cùng một QR: một request thành công, request còn lại HTTP 409 với giờ/quầy đầu tiên.
 
 Mở **Admin → Khách mời** ở tab **Danh sách check-in**, sau đó xác nhận RSVP của một khách bằng link mời trên điện thoại. Khách phải xuất hiện ngay mà không tải lại trang; tab **Thư mời** vẫn hiển thị toàn bộ danh sách và trạng thái phản hồi. Đây là bước nghiệm thu event `rsvp` qua Redis/SSE và bộ lọc `rsvp_status=accepted`.
 

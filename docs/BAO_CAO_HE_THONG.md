@@ -50,11 +50,11 @@ Tất cả kết nối API/SSE từ trình duyệt đi qua HTTPS tới cloud; Ve
 
 Email trùng trong phạm vi sự kiện được bỏ qua để hạn chế nhập lặp. Hai người cùng tên vẫn có thể là hai khách khác nhau. Với dữ liệu không có email, cần đối soát file nguồn trước khi import lại; không dùng tên làm khóa định danh.
 
-### CSV demo tự đồng bộ khi deploy
+### Quản lý vòng đời danh sách khách
 
-Repo bàn giao sẵn [`apps/api/data/demo-guests.csv`](../apps/api/data/demo-guests.csv) với đúng ba khách: **Diệp Gia Luật, Ánh Hiếu, Đặng Như Phước**. Docker image chứa file này; trước khi Uvicorn phục vụ request, Compose tự chạy migration rồi `python -m app.seed --guests-file data/demo-guests.csv`.
+Repo bàn giao sẵn [`apps/api/data/demo-guests.csv`](../apps/api/data/demo-guests.csv) với ba khách mẫu: **Diệp Gia Luật, Ánh Hiếu, Đặng Như Phước**. File này dùng cho local hoặc nạp thủ công. Production chỉ tự chạy migration và seed cấu hình sự kiện/Admin, không nạp lại danh sách demo mỗi lần container khởi động.
 
-Lần đầu, mỗi dòng CSV tạo một khách ở trạng thái `pending` và tự nhận token riêng. Các lần sau khớp bằng email duy nhất để cập nhật tên, công ty, email, điện thoại nhưng giữ nguyên token, RSVP, check-in và lời nhắn khách đã gửi. Khách tạo thêm qua UI/API không bị xóa. Muốn bổ sung khách tự động, thêm dòng có email mới vào CSV rồi build/deploy lại backend. Local có thể dùng `--replace-guests` để xóa dữ liệu thử và nạp lại đúng ba người; production cố ý chặn tùy chọn xóa này.
+Admin có thể xóa từng khách hoặc chọn **Xóa tất cả** (phải nhập `XOA TAT CA`) trước khi nhập bộ CSV mới. API xóa cả check-in gắn với khách và phát `guests_changed`; dashboard/table đang mở tải snapshot PostgreSQL mới qua SSE. Event, tài khoản Admin, mã PG và màn hình chào vẫn hoạt động. Mỗi khách import mới nhận token riêng; ZIP đặt tên QR theo họ tên không dấu với hậu tố `-thienlong.png`, và tự thêm số khi trùng tên.
 
 ### Luồng RSVP
 
@@ -218,7 +218,8 @@ Base URL: `https://YOUR_API_DOMAIN/api/v1`. JSON snake_case, lỗi validation HT
 | Admin JWT | `GET /admin/me`, `GET /admin/event` | Tài khoản, cấu hình và link welcome |
 | Admin JWT | `GET /admin/guests` | Tìm, lọc, sắp xếp, phân trang |
 | Admin JWT | `POST /admin/guests` | Thêm một khách, tự sinh token/URL/QR |
-| Admin JWT | `GET/PATCH /admin/guests/{id}` | Xem/sửa khách |
+| Admin JWT | `GET/PATCH/DELETE /admin/guests/{id}` | Xem/sửa/xóa một khách và check-in liên quan |
+| Admin JWT | `DELETE /admin/guests` | Xóa toàn bộ khách/check-in để nhập bộ CSV mới |
 | Admin JWT | `POST /admin/guests/import/preview` | Kiểm tra CSV/XLSX |
 | Admin JWT | `POST /admin/guests/import` | Nhập file đã kiểm tra lại |
 | Admin JWT | `GET /admin/guests/template.csv` | File mẫu |
@@ -304,7 +305,7 @@ Khi khách xác nhận tham dự, API commit RSVP và outbox trong PostgreSQL r�
 3. Upload → xem trước → sửa lỗi → nhập khách.
 4. Vào **Khách mời → Thư mời** để tìm/lọc, sửa thông tin; phát sinh một khách thì bấm **Thêm khách**, không sửa file cũ rồi import lại. Dùng tab **Danh sách check-in** để theo dõi riêng khách đã xác nhận.
 5. Tải ZIP QR, đối soát file mapping với khách và thiệp; in QR đủ nét, có vùng trắng bao quanh.
-6. Cấp mã PG, phân quầy; mở link welcome từ quản trị trên laptop kết nối LED/TV.
+6. Cấp mã PG, phân quầy. Nút Welcome đang tạm ẩn trên Dashboard; màn hình LED/TV vẫn mở trực tiếp `https://FRONTEND/welcome/{WELCOME_SCREEN_TOKEN}` và tiếp tục nhận SSE như cũ.
 
 ### Khách mời
 
@@ -331,7 +332,7 @@ Mở link riêng trên thiết bị LED/TV, dùng chế độ fullscreen trình 
 - Import dùng preview và transaction; chống check-in trùng ở DB; outbox bảo vệ tính nhất quán giữa DB và event.
 - Đây là phần mềm online: mất Internet thì PG dùng kết nối dự phòng; không có đồng bộ offline.
 - Mã PG dùng chung nên truy vết theo quầy, không xác định danh tính từng PG.
-- Không có thao tác xóa/undo check-in trong UI/API v1; xử lý dữ liệu sai cần quy trình quản trị có kiểm soát.
+- Không có thao tác undo riêng cho một lượt check-in. Admin có thể xóa khách (kèm check-in liên quan) sau hộp thoại xác nhận, hoặc xóa toàn bộ danh sách để thay bộ dữ liệu sự kiện.
 
 ## 8. Kết quả kiểm tra và bàn giao
 
@@ -339,15 +340,15 @@ Repo đã có đủ bốn lớp bàn giao:
 
 | Lớp | Phần đã hoàn thành |
 |---|---|
-| Frontend | Giao diện nhận diện Thiên Long responsive; RSVP mobile, PG camera/tìm tay, Admin dashboard, hai tab Thư mời/Check-in, import/export, Welcome 16:9 và đầy đủ trạng thái loading/error/empty/success |
-| Backend | API phân quyền, import preview/transaction, tạo khách thủ công, tự sinh token/QR, KPI/export, check-in chống trùng và Redis Streams/SSE |
-| Data | PostgreSQL schema + Alembic, ràng buộc email/token/check-in, transaction outbox, Redis AOF/stream giới hạn, CSV ba khách tự upsert khi deploy |
+| Frontend | Giao diện nhận diện Thiên Long responsive; RSVP mobile, PG camera/tìm tay, Admin dashboard, hai tab Thư mời/Check-in, xóa khách/danh sách có xác nhận, import/export, Welcome 16:9 và đầy đủ trạng thái loading/error/empty/success |
+| Backend | API phân quyền, import preview/transaction, tạo/xóa khách, tự sinh token/QR, KPI/export, check-in chống trùng và Redis Streams/SSE |
+| Data | PostgreSQL schema + Alembic, ràng buộc email/token/check-in, transaction outbox, Redis AOF/stream giới hạn, import/xóa danh sách qua Admin |
 | Deployment | Dockerfile, Compose self-hosted/managed/dev, Caddy block ghép vào `minute_caddy`, biến backend/Vercel, migration, backup/restore, rollback và checklist nghiệm thu |
 
-Kết quả chạy trên máy bàn giao ngày 11/09/2026:
+Kết quả chạy trên máy bàn giao ngày 12/09/2026:
 
-- Backend: **30 passed** trên pytest, gồm quyền truy cập, RSVP, thêm/import khách và token, CSV seed idempotent, QR/export, KPI, SSE, Redis lỗi/retry, cursor reconnect và hai check-in đồng thời trên PostgreSQL thật. Có 2 cảnh báo deprecation từ bộ TestClient, không phải lỗi ứng dụng.
-- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **11/11** test parser QR và payload welcome đạt; build production đủ 9 route. Kiểm tra Chromium bổ sung xác nhận lời nhắn từ form RSVP xuất hiện trên bảng Admin qua SSE mà không tải lại.
+- Backend: **30 passed, 2 skipped** trên pytest local, gồm quyền truy cập, RSVP, thêm/import/xóa khách và token, CSV seed idempotent, quy tắc tên QR, export, KPI, SSE, Redis lỗi/retry và cursor reconnect. Hai test cạnh tranh PostgreSQL cần `TEST_DATABASE_URL` nên được bỏ qua trên máy local; có 2 cảnh báo deprecation từ TestClient, không phải lỗi ứng dụng.
+- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **16/16** test camera, tên file QR, parser QR và payload welcome đạt; build production đủ 9 route.
 - Build production Next.js đạt; 9 route được tạo thành công. Docker image backend build đạt, runtime Linux đọc đúng `Asia/Ho_Chi_Minh` và image không chứa `.env`.
 - Tích hợp API thật đạt với PostgreSQL + Redis: trạng thái sạch đúng 3 khách `pending`, 0 check-in, ba token dài 43 ký tự và ba QR PNG hợp lệ; login, preview/import/deduplicate, RSVP, phân vai, hai request check-in đồng thời cho kết quả một thành công/một 409, export và SSE đến Admin/Welcome.
 - Trình duyệt demo bổ sung đạt luồng QR → form RSVP → dashboard đổi số xác nhận từ 0 lên 1 qua SSE và khách xuất hiện trong tab Danh sách check-in; sau phép thử database đã được reset lại về ba khách chưa phản hồi, chưa check-in.

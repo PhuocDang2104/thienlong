@@ -1,5 +1,7 @@
 import csv
 import io
+import re
+import unicodedata
 import zipfile
 from zoneinfo import ZoneInfo
 
@@ -34,12 +36,26 @@ def qr_png(guest: Guest) -> bytes:
     return stream.getvalue()
 
 
+def qr_filename(guest: Guest, sequence: int | None = None) -> str:
+    """Return an ASCII filename that is safe for ZIP and HTTP headers."""
+    normalized = unicodedata.normalize('NFD', guest.name.replace('Đ', 'D').replace('đ', 'd'))
+    ascii_name = ''.join(character for character in normalized if unicodedata.category(character) != 'Mn')
+    slug = re.sub(r'[^a-z0-9]+', '-', ascii_name.lower()).strip('-')
+    if not slug:
+        slug = f'khach-{guest.id:05d}'
+    duplicate = f'-{sequence}' if sequence and sequence > 1 else ''
+    return f'{slug}{duplicate}-thienlong.png'
+
+
 def qr_archive(guests: list[Guest]) -> bytes:
     stream = io.BytesIO()
     mapping = [['Guest Name', 'Company', 'Invitation URL', 'QR File']]
+    filename_counts: dict[str, int] = {}
     with zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for guest in guests:
-            filename = f'qr/guest-{guest.id:05d}.png'
+            base_filename = qr_filename(guest)
+            filename_counts[base_filename] = filename_counts.get(base_filename, 0) + 1
+            filename = f'qr/{qr_filename(guest, filename_counts[base_filename])}'
             archive.writestr(filename, qr_png(guest))
             mapping.append([guest.name, guest.company, invitation_url(guest), filename])
         archive.writestr('mapping.csv', csv_bytes(mapping))

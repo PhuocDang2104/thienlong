@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ExternalLink, MapPin, RefreshCw, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin, RefreshCw, Users } from "lucide-react";
 import { useAdmin } from "@/components/layout/admin-shell";
 import { useAdminResource } from "@/hooks/use-admin-resource";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,6 @@ export default function DashboardPage() {
             <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5"/>{event.venue}</span>
           </div>
         </div>
-        <Button asChild variant="secondary" size="sm"><a href={event.welcome_screen_url} target="_blank" rel="noopener noreferrer">Màn hình chào<ExternalLink/></a></Button>
       </div>
       {data && <dl className="grid border-t border-border bg-slate-50/60 sm:grid-cols-2 xl:grid-cols-4">
         {[

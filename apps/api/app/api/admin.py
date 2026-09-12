@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -12,9 +12,9 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import admin_required, claims, create_session, dummy_hash, limiter, verify_password
 from app.models import AdminUser, Checkin, Guest
-from app.schemas import AdminResponse, DashboardResponse, EventResponse, GuestCreate, GuestPage, GuestPatch, GuestResponse, ImportPreview, ImportResult, LoginRequest, SessionResponse, TrendPoint
+from app.schemas import AdminResponse, DashboardResponse, DeleteGuestsResponse, EventResponse, GuestCreate, GuestPage, GuestPatch, GuestResponse, ImportPreview, ImportResult, LoginRequest, SessionResponse, TrendPoint
 from app.services.dashboard import all_guests, dashboard_summary, trend
-from app.services.exports import csv_bytes, qr_archive, qr_png, report_rows, xlsx_report
+from app.services.exports import csv_bytes, qr_archive, qr_filename, qr_png, report_rows, xlsx_report
 from app.services.guests import add_outbox, get_event, get_guest, search_clause, serialize_guest
 from app.services.imports import commit_import, preview_import, read_upload
 from app.services.realtime import prepare_stream, stream_events
@@ -110,9 +110,21 @@ def guest_create(body: GuestCreate, db: Session = Depends(get_db), user: AdminUs
     return serialize_guest(guest)
 
 
+@router.delete('/guests', response_model=DeleteGuestsResponse)
+def guests_delete_all(db: Session = Depends(get_db), user: AdminUser = Depends(admin_required)):
+    guest_ids = list(db.scalars(select(Guest.id).where(Guest.event_id == 1).with_for_update()))
+    if guest_ids:
+        db.execute(delete(Checkin).where(Checkin.event_id == 1))
+        db.execute(delete(Guest).where(Guest.event_id == 1))
+        add_outbox(db, 'guests_changed')
+        db.commit()
+    return {'deleted': len(guest_ids)}
+
+
 @router.get('/guests/{guest_id}/qr.png')
 def guest_qr(guest_id: int, db: Session = Depends(get_db), user: AdminUser = Depends(admin_required)):
-    return attachment(qr_png(get_guest(db, guest_id)), f'guest-{guest_id:05d}.png', 'image/png')
+    guest = get_guest(db, guest_id)
+    return attachment(qr_png(guest), qr_filename(guest), 'image/png')
 
 
 @router.get('/guests/{guest_id}', response_model=GuestResponse)
@@ -144,6 +156,17 @@ def guest_update(guest_id: int, body: GuestPatch, db: Session = Depends(get_db),
         db.rollback()
         raise HTTPException(409, 'Email đã thuộc về khách mời khác.') from None
     return serialize_guest(guest)
+
+
+@router.delete('/guests/{guest_id}', response_model=DeleteGuestsResponse)
+def guest_delete(guest_id: int, db: Session = Depends(get_db), user: AdminUser = Depends(admin_required)):
+    guest = get_guest(db, guest_id, lock=True)
+    if guest.checkin is not None:
+        db.delete(guest.checkin)
+    db.delete(guest)
+    add_outbox(db, 'guests_changed')
+    db.commit()
+    return {'deleted': 1}
 
 
 @router.get('/dashboard/summary', response_model=DashboardResponse)

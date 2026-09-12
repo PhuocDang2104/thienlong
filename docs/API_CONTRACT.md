@@ -32,16 +32,18 @@ Base `/api/v1`. JSON snake_case; datetimes ISO 8601 UTC. Auth `Authorization: Be
 - POST `/admin/guests`: `{name,company?,email?,phone?,rsvp_status?,companions?}` -> Guest, HTTP 201. Backend tự sinh `invite_token`; request không được tự truyền token hoặc ghi chú thay khách.
 - GET `/admin/guests/{id}`: Guest.
 - PATCH `/admin/guests/{id}`: `{name?,company?,email?,phone?,rsvp_status?,companions?}` -> Guest.
+- DELETE `/admin/guests/{id}`: xóa khách cùng lượt check-in, trả `{deleted: 1}` và phát `guests_changed`.
+- DELETE `/admin/guests`: xóa toàn bộ khách/check-in của sự kiện, trả `{deleted: number}` và phát `guests_changed` khi có dữ liệu.
 - POST `/admin/guests/import/preview`: multipart field `file` CSV/XLSX -> `{rows: [{row_number,name,company,email,phone,notes}], errors: [{row_number,message}], total, valid_count}`. Không ghi DB.
 - POST `/admin/guests/import`: multipart `file` -> `{imported, skipped}`. Atomic, reject nếu lỗi; skip email trùng, không skip tên trùng; token random sinh khi commit.
 - GET `/admin/guests/template.csv`: file mẫu.
-- GET `/admin/guests/qr.zip`: zip QR PNG + mapping CSV (tất cả khách, admin only).
-- GET `/admin/guests/{id}/qr.png`: QR riêng.
+- GET `/admin/guests/qr.zip`: zip QR PNG + mapping CSV (tất cả khách, admin only). PNG có tên dạng `ho-va-ten-thienlong.png`; tên trùng tiếp theo có hậu tố số.
+- GET `/admin/guests/{id}/qr.png`: QR riêng, tên file `ho-va-ten-thienlong.png` (ASCII, bỏ dấu tiếng Việt).
 - GET `/admin/dashboard/summary`: `{total_guests,accepted,declined,pending,expected_attendance,checked_in,not_arrived,no_show,checkin_rate,registered_arrived, recent_checkins: [{id,guest_name,company,checked_in_at,counter}], checkins_by_counter: [{counter,count}]}`. checked_in là số thư mời đã đến; expected_attendance là accepted + companions; not_arrived = total_guests - checked_in; no_show = accepted chưa checkin; checkin_rate = checked_in / total_guests *100; registered_arrived = sum(1 + companions) khách đã check-in (ước tính, không khẳng định thực tế người đi cùng).
 - GET `/admin/dashboard/checkins`: `[{time: ISO datetime, count}]`, nhóm 15 phút; optional `from`, `to` ISO.
 - GET `/admin/export/checkins.xlsx` hoặc `.csv`: báo cáo toàn bộ khách (bao gồm chưa đến), định nghĩa KPI như trên.
 
-Seed CLI nhập event/admin/mã PG từ biến env. `--guests-file data/demo-guests.csv` upsert khách theo email: khách mới tự sinh token; khách cũ chỉ cập nhật tên, công ty, email, điện thoại và giữ token/RSVP/check-in/notes. Docker production tự chạy migration và lệnh này trước Uvicorn. `--replace-guests` chỉ được phép ở development để reset toàn bộ dữ liệu khách/check-in. Config EVENT_NAME, EVENT_START_AT, EVENT_VENUE, EVENT_COUNTERS (comma separated), EVENT_MAX_COMPANIONS, ADMIN_EMAIL, ADMIN_PASSWORD, PG_ACCESS_CODE, WELCOME_SCREEN_TOKEN. Backend dùng DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_EXPIRE_MINUTES, APP_ENV, CORS_ORIGINS (comma separated), PUBLIC_FRONTEND_URL.
+Seed CLI nhập event/admin/mã PG từ biến env. Docker production tự chạy migration và `python -m app.seed` trước Uvicorn, nhưng không tự nạp lại danh sách khách để dữ liệu đã xóa trên Admin không quay lại sau restart. Khi cần chủ động nạp file từ CLI, `--guests-file data/demo-guests.csv` upsert khách theo email: khách mới tự sinh token; khách cũ giữ token/RSVP/check-in/notes. `--replace-guests` chỉ được phép ở development. Config EVENT_NAME, EVENT_START_AT, EVENT_VENUE, EVENT_COUNTERS (comma separated), EVENT_MAX_COMPANIONS, ADMIN_EMAIL, ADMIN_PASSWORD, PG_ACCESS_CODE, WELCOME_SCREEN_TOKEN. Backend dùng DATABASE_URL, REDIS_URL, JWT_SECRET, JWT_EXPIRE_MINUTES, APP_ENV, CORS_ORIGINS (comma separated), PUBLIC_FRONTEND_URL.
 
 ## Cập nhật yêu cầu: Redis + SSE
 

@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 from app.core.config import get_settings
 from app.models import Checkin, Guest, Outbox, utcnow
+from app.services.exports import qr_filename
 from conftest import ADMIN_PASSWORD, PG_CODE, SCREEN_TOKEN
 
 
@@ -160,6 +161,29 @@ def test_admin_creates_guest_with_automatic_private_token(system, admin_headers)
     assert system.client.post('/api/v1/admin/guests', headers=admin_headers, json={**body, 'email': '', 'rsvp_status': 'pending', 'companions': 1}).status_code == 422
 
 
+def test_admin_deletes_one_guest_and_then_the_complete_guest_dataset(system, admin_headers, pg_headers):
+    first = system.guests[0]
+    assert checkin(system, pg_headers).status_code == 200
+    response = system.client.delete(f'/api/v1/admin/guests/{first["id"]}', headers=admin_headers)
+    assert response.status_code == 200 and response.json() == {'deleted': 1}
+    assert system.client.get(f'/api/v1/public/invitations/{first["token"]}').status_code == 404
+    assert system.client.get('/api/v1/admin/guests', headers=admin_headers).json()['total'] == 3
+    with system.factory() as db:
+        assert db.get(Guest, first['id']) is None
+        assert db.scalar(select(func.count()).select_from(Checkin)) == 0
+        assert db.scalars(select(Outbox).order_by(Outbox.id.desc())).first().event_type == 'guests_changed'
+
+    assert system.client.delete('/api/v1/admin/guests/99999', headers=admin_headers).status_code == 404
+    assert system.client.delete('/api/v1/admin/guests').status_code == 401
+    response = system.client.delete('/api/v1/admin/guests', headers=admin_headers)
+    assert response.status_code == 200 and response.json() == {'deleted': 3}
+    assert system.client.get('/api/v1/admin/guests', headers=admin_headers).json()['total'] == 0
+    assert system.client.delete('/api/v1/admin/guests', headers=admin_headers).json() == {'deleted': 0}
+    with system.factory() as db:
+        assert db.scalar(select(func.count()).select_from(Guest)) == 0
+        assert db.scalar(select(func.count()).select_from(Checkin)) == 0
+
+
 def test_import_preview_atomic_validation_and_duplicate_email_skip(system, admin_headers):
     content = 'name,company,email,phone,notes\nKhách mới,Công ty M,moi@example.com,0900000000,Đón tại sảnh A\nKhách lỗi,Công ty B,invalid-email,,\n'.encode()
     preview = upload(system.client, '/api/v1/admin/guests/import/preview', admin_headers, content)
@@ -249,11 +273,13 @@ def test_exports_include_not_arrived_and_neutralize_formula(system, admin_header
 def test_qr_zip_mapping_and_template(system, admin_headers, pg_headers):
     response = system.client.get(f'/api/v1/admin/guests/{system.guests[0]["id"]}/qr.png', headers=admin_headers)
     assert response.status_code == 200 and response.content.startswith(b'\x89PNG\r\n\x1a\n')
+    assert response.headers['content-disposition'] == 'attachment; filename="nguyen-van-an-thienlong.png"'
     response = system.client.get('/api/v1/admin/guests/qr.zip', headers=admin_headers)
     with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
         assert len(archive.namelist()) == 5
         rows = list(csv.reader(io.StringIO(archive.read('mapping.csv').decode('utf-8-sig'))))
         assert len(rows) == 5
+        assert 'qr/nguyen-van-an-thienlong.png' in archive.namelist()
         for row in rows[1:]:
             assert row[2].startswith('http://localhost:3000/i/invitation-token-')
             assert archive.read(row[3]).startswith(b'\x89PNG')
@@ -261,6 +287,12 @@ def test_qr_zip_mapping_and_template(system, admin_headers, pg_headers):
     template = system.client.get('/api/v1/admin/guests/template.csv', headers=admin_headers)
     assert template.status_code == 200
     assert template.content.decode('utf-8-sig').splitlines()[0] == 'name,company,email,phone,notes'
+
+
+def test_qr_filename_removes_vietnamese_accents_and_uses_brand_suffix():
+    assert qr_filename(Guest(id=7, name='Đặng Như Phước')) == 'dang-nhu-phuoc-thienlong.png'
+    assert qr_filename(Guest(id=8, name='Diệp Gia Luật')) == 'diep-gia-luat-thienlong.png'
+    assert qr_filename(Guest(id=9, name='Diệp Gia Luật'), 2) == 'diep-gia-luat-2-thienlong.png'
 
 
 def test_rate_limit_and_validation_do_not_echo_secret(system):

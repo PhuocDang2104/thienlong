@@ -35,7 +35,7 @@ npm ci
 npm run dev
 ```
 
-Mở http://localhost:3000. Tài khoản local do script tạo và điền sẵn trên form: `admin@example.com` / `LocalDemo-ChangeMe-2026!`; mã PG `thienlong-pg`. Lệnh `--demo` đồng bộ đúng ba khách trong [`apps/api/data/demo-guests.csv`](apps/api/data/demo-guests.csv), tự sinh token cho khách mới và giữ token khi chạy lại. Script không ghi đè cấu hình đã tồn tại. Link Welcome và QR thật lấy trong giao diện quản trị. Trên Linux/macOS thay `.venv/Scripts/python` bằng `.venv/bin/python`.
+Mở http://localhost:3000. Tài khoản local do script tạo và điền sẵn trên form: `admin@example.com` / `LocalDemo-ChangeMe-2026!`; mã PG `thienlong-pg`. Lệnh `--demo` đồng bộ đúng ba khách trong [`apps/api/data/demo-guests.csv`](apps/api/data/demo-guests.csv), tự sinh token cho khách mới và giữ token khi chạy lại. Script không ghi đè cấu hình đã tồn tại. QR thật lấy trong giao diện quản trị; route Welcome vẫn hoạt động qua URL chứa screen token. Trên Linux/macOS thay `.venv/Scripts/python` bằng `.venv/bin/python`.
 
 ## Tài liệu bàn giao
 
@@ -55,7 +55,7 @@ docs/           Yêu cầu gốc và tài liệu bàn giao
 .github/        CI kiểm tra backend và frontend
 ```
 
-Cloud production dùng tài khoản riêng trong `.env.example`; môi trường demo có thể cấu hình Vercel để điền sẵn tài khoản theo hướng dẫn deploy. Container backend tự chạy migration và đồng bộ CSV ba khách khi khởi động; không cần tạo tài khoản PG riêng.
+Cloud production dùng tài khoản riêng trong `.env.example`; môi trường demo có thể cấu hình Vercel để điền sẵn tài khoản theo hướng dẫn deploy. Container backend tự chạy migration và seed cấu hình hệ thống khi khởi động; danh sách khách được nhập/xóa qua Admin và không tự quay lại sau restart. Không cần tạo tài khoản PG riêng.
 
 ## Kiểm tra
 

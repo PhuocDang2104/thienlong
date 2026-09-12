@@ -112,6 +112,10 @@ class GuestPage(BaseModel):
     page_size: int
 
 
+class DeleteGuestsResponse(BaseModel):
+    deleted: int
+
+
 class GuestCreate(StrictModel):
     name: str = Field(min_length=1, max_length=200)
     company: str = Field(default='', max_length=250)

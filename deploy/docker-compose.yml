@@ -7,7 +7,7 @@ services:
     image: thienlong-api:${IMAGE_TAG:-local}
     restart: unless-stopped
     env_file: ${BACKEND_ENV_FILE:-../.env}
-    command: ["sh", "-c", "python -m alembic upgrade head && python -m app.seed --guests-file data/demo-guests.csv && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --no-access-log --proxy-headers --forwarded-allow-ips \"$$FORWARDED_ALLOW_IPS\""]
+    command: ["sh", "-c", "python -m alembic upgrade head && python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --no-access-log --proxy-headers --forwarded-allow-ips \"$$FORWARDED_ALLOW_IPS\""]
     expose: ["8000"]
     networks:
       internal:
