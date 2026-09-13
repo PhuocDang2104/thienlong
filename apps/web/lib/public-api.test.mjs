@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isWelcomeGuest } from "./public-api.ts";
+import { eventDate, eventTime, isWelcomeGuest } from "./public-api.ts";
 
 const guest = { id: 42, name: "Nguyễn Văn An", company: "Thiên Long", checked_in_at: "2026-09-11T10:30:00Z" };
 
@@ -19,4 +19,10 @@ test("rejects invalid event data without crashing the stream consumer", () => {
   for (const value of [null, [], {}, "checkin", { ...guest, name: null }, { ...guest, company: 123 }, { ...guest, checked_in_at: "not-a-date" }]) {
     assert.equal(isWelcomeGuest(value), false);
   }
+});
+
+test("formats the configured reception time in the Vietnam timezone", () => {
+  const reception = "2026-11-20T17:30:00+07:00";
+  assert.equal(eventTime(reception), "17:30");
+  assert.match(eventDate(reception), /20\/11\/2026/);
 });

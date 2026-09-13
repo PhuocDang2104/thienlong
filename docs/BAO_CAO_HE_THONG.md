@@ -4,6 +4,8 @@
 
 Repo phục vụ một sự kiện khoảng 350 khách, gồm đủ bảy hạng mục: RSVP, PG check-in, dashboard BTC, quản lý khách, tạo QR, welcome screen và xuất báo cáo. Một frontend Next.js dùng bốn nhóm route, một backend FastAPI và một PostgreSQL.
 
+Cấu hình sự kiện hiện tại: **45 năm Hành Trình - Viết triệu tương lai**, đón khách lúc **17:30 ngày 20/11/2026**, tại **Gem Center - Sảnh Pollux, Tầng 3**. Trang cổng, thư mời, PG, Dashboard và Welcome cùng đọc cấu hình sự kiện từ API; trang cổng có giá trị dự phòng tương ứng khi API tạm thời chưa phản hồi.
+
 **Yêu cầu bổ sung Redis + SSE được ưu tiên hơn cơ chế polling trong blueprint gốc.** API ghi dữ liệu nghiệp vụ và bản ghi chờ phát trong một transaction; sau commit, dispatcher chuyển thông báo qua Redis Streams và SSE tới trình duyệt. Luồng này cho phép giao diện cập nhật ngay khi nhận sự kiện và tránh báo check-in thành công khi database chưa lưu được.
 
 | Thành phần | Công nghệ / vai trò |
@@ -345,10 +347,10 @@ Repo đã có đủ bốn lớp bàn giao:
 | Data | PostgreSQL schema + Alembic, ràng buộc email/token/check-in, transaction outbox, Redis AOF/stream giới hạn, import/xóa danh sách qua Admin |
 | Deployment | Dockerfile, Compose self-hosted/managed/dev, Caddy block ghép vào `minute_caddy`, biến backend/Vercel, migration, backup/restore, rollback và checklist nghiệm thu |
 
-Kết quả chạy trên máy bàn giao ngày 12/09/2026:
+Kết quả chạy trên máy bàn giao ngày 13/09/2026:
 
 - Backend: **30 passed, 2 skipped** trên pytest local, gồm quyền truy cập, RSVP, thêm/import/xóa khách và token, CSV seed idempotent, quy tắc tên QR, export, KPI, SSE, Redis lỗi/retry và cursor reconnect. Hai test cạnh tranh PostgreSQL cần `TEST_DATABASE_URL` nên được bỏ qua trên máy local; có 2 cảnh báo deprecation từ TestClient, không phải lỗi ứng dụng.
-- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **17/17** test camera, tên file QR, parser QR và payload welcome đạt; build production đủ 9 route.
+- Frontend: ESLint không lỗi/cảnh báo, TypeScript typecheck đạt, **18/18** test camera, tên file QR, parser QR, định dạng giờ Việt Nam và payload welcome đạt; build production đủ 9 route.
 - Build production Next.js đạt; 9 route được tạo thành công. Docker image backend build đạt, runtime Linux đọc đúng `Asia/Ho_Chi_Minh` và image không chứa `.env`.
 - Tích hợp API thật đạt với PostgreSQL + Redis: trạng thái sạch đúng 3 khách `pending`, 0 check-in, ba token dài 43 ký tự và ba QR PNG hợp lệ; login, preview/import/deduplicate, RSVP, phân vai, hai request check-in đồng thời cho kết quả một thành công/một 409, export và SSE đến Admin/Welcome.
 - Trình duyệt demo bổ sung đạt luồng QR → form RSVP → dashboard đổi số xác nhận từ 0 lên 1 qua SSE và khách xuất hiện trong tab Danh sách check-in; sau phép thử database đã được reset lại về ba khách chưa phản hồi, chưa check-in.

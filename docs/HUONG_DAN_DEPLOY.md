@@ -100,12 +100,12 @@ Sinh **mỗi secret một giá trị khác nhau**, ví dụ `openssl rand -hex 3
 | `JWT_SECRET` | Chuỗi ngẫu nhiên mạnh, tối thiểu 32 byte |
 | `JWT_EXPIRE_MINUTES` | `480` (8 giờ) |
 | `CORS_ORIGINS` | Origin Vercel chính xác, không có `/` cuối; nhiều origin ngăn bởi dấu phẩy |
-| `PUBLIC_FRONTEND_URL` | URL chính thức dùng tạo QR, ví dụ `https://thienlong-event.vercel.app` |
+| `PUBLIC_FRONTEND_URL` | URL chính thức dùng tạo QR: `https://thienlong-ten.vercel.app` |
 | `CADDY_NETWORK` | Tên Docker network đã xác định |
 | `FORWARDED_ALLOW_IPS` | IP Caddy hoặc subnet proxy đáng tin |
-| `EVENT_NAME` | Tên sự kiện, đặt trong dấu nháy nếu có khoảng trắng |
-| `EVENT_START_AT` | ISO 8601 có múi giờ, ví dụ `2026-12-12T18:00:00+07:00` |
-| `EVENT_VENUE` | Địa điểm thực tế |
+| `EVENT_NAME` | `45 năm Hành Trình - Viết triệu tương lai` |
+| `EVENT_START_AT` | `2026-11-20T17:30:00+07:00` (đón khách 17:30 ngày 20/11/2026) |
+| `EVENT_VENUE` | `Gem Center - Sảnh Pollux, Tầng 3` |
 | `EVENT_COUNTERS` | `COUNTER_01,COUNTER_02,COUNTER_03` |
 | `EVENT_MAX_COMPANIONS` | Số người đi cùng tối đa mỗi lời mời |
 | `ADMIN_EMAIL` | Email đăng nhập BTC |
@@ -223,7 +223,7 @@ Không bật access log chứa nguyên URL `/i/{token}`, `/public/invitations/{t
 | Biến trên Vercel | Ví dụ |
 |---|---|
 | `NEXT_PUBLIC_API_BASE_URL` | `https://thienlong-api.duckdns.org/api/v1` |
-| `NEXT_PUBLIC_APP_URL` | `https://thienlong-event.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://thienlong-ten.vercel.app` |
 
 Nếu build báo `NEXT_PUBLIC_API_BASE_URL is required for production builds`, vào **Project → Settings → Environment Variables**, tạo đủ hai biến trên và chọn môi trường **Production**. Sau đó vào **Deployments → deployment mới nhất → Redeploy**. Biến thêm sau khi một deployment đã chạy không được áp dụng ngược vào build cũ. Có thể kiểm tra bằng Vercel CLI từ thư mục `apps/web` đã link project:
 
@@ -254,7 +254,7 @@ Phương án chuẩn là một domain frontend với `/pg`, `/admin`, `/i/...`, 
 
 ```bash
 curl -i -X OPTIONS https://thienlong-api.duckdns.org/api/v1/admin/stream \
-  -H 'Origin: https://thienlong-event.vercel.app' \
+  -H 'Origin: https://thienlong-ten.vercel.app' \
   -H 'Access-Control-Request-Method: GET' \
   -H 'Access-Control-Request-Headers: authorization,last-event-id'
 ```
